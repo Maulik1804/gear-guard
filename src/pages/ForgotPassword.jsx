@@ -1,21 +1,30 @@
-// src/pages/ForgotPassword.jsx
 import { useState } from "react";
-import AuthLayout from "../components/AuthLayout";
+import { resetPassword } from "aws-amplify/auth";
+import { useNavigate } from "react-router-dom";
+import { AuthCard, Input, Error } from "../components/AuthUI";
+
 
 export default function ForgotPassword() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
 
-  return (
-    <AuthLayout title="Forgot Password">
-      <input
-        placeholder="Enter your email"
-        className="w-full border px-4 py-2 rounded-lg mb-4"
-        onChange={(e) => setEmail(e.target.value)}
-      />
+  const handleReset = async (e) => {
+    e.preventDefault();
+    await resetPassword({ username: email });
+    navigate("/reset-password");
+  };
 
-      <button className="w-full bg-blue-600 text-white py-2 rounded-lg">
-        Send OTP
-      </button>
-    </AuthLayout>
+  return (
+    <AuthCard title="Forgot Password">
+      <form onSubmit={handleReset} className="space-y-4">
+        <Input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={setEmail}
+        />
+        <button className="btn-primary">Send Code</button>
+      </form>
+    </AuthCard>
   );
 }
