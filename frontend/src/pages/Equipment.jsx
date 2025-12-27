@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   Plus,
-  Search,
   Edit2,
   Trash2,
   Cog,
@@ -18,6 +17,7 @@ import EmptyState from "../components/EmptyState";
 import Pagination from "../components/Pagination";
 import StatusBadge from "../components/StatusBadge";
 import toast from "react-hot-toast";
+import { equipmentApi, locationsApi } from "../services/api";
 
 const Equipment = () => {
   const [equipment, setEquipment] = useState([]);
@@ -35,7 +35,7 @@ const Equipment = () => {
     equipment_name: "",
     type_model: "",
     equipment_category_id: "",
-    status: "active",
+    status: "operational",
     description: "",
   });
   const [categoryFormData, setCategoryFormData] = useState({ name: "" });
@@ -43,129 +43,55 @@ const Equipment = () => {
 
   const itemsPerPage = 12;
 
-  useEffect(() => {
-    setTimeout(() => {
-      setCategories([
-        { id: 1, name: "CNC Machines" },
-        { id: 2, name: "HVAC Systems" },
-        { id: 3, name: "Conveyors" },
-        { id: 4, name: "Forklifts" },
-        { id: 5, name: "Generators" },
-        { id: 6, name: "Pumps" },
-        { id: 7, name: "Compressors" },
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [equipmentRes, categoriesRes] = await Promise.all([
+        equipmentApi.getAll(),
+        equipmentApi.getCategories(),
       ]);
-      setEquipment([
-        {
-          id: 1,
-          equipment_name: "CNC Machine #1",
-          type_model: "Haas VF-2",
-          category: "CNC Machines",
-          status: "active",
-          location: "Building A",
-          last_maintenance: "2024-12-15",
-        },
-        {
-          id: 2,
-          equipment_name: "CNC Machine #2",
-          type_model: "Haas VF-3",
-          category: "CNC Machines",
-          status: "maintenance",
-          location: "Building A",
-          last_maintenance: "2024-12-10",
-        },
-        {
-          id: 3,
-          equipment_name: "HVAC Unit A",
-          type_model: "Carrier 50XC",
-          category: "HVAC Systems",
-          status: "active",
-          location: "Main Office",
-          last_maintenance: "2024-12-01",
-        },
-        {
-          id: 4,
-          equipment_name: "HVAC Unit B",
-          type_model: "Trane XR15",
-          category: "HVAC Systems",
-          status: "active",
-          location: "Warehouse",
-          last_maintenance: "2024-11-20",
-        },
-        {
-          id: 5,
-          equipment_name: "Conveyor Belt #1",
-          type_model: "Dorner 2200",
-          category: "Conveyors",
-          status: "active",
-          location: "Production Floor",
-          last_maintenance: "2024-12-12",
-        },
-        {
-          id: 6,
-          equipment_name: "Conveyor Belt #2",
-          type_model: "Dorner 3200",
-          category: "Conveyors",
-          status: "out-of-service",
-          location: "Production Floor",
-          last_maintenance: "2024-10-05",
-        },
-        {
-          id: 7,
-          equipment_name: "Forklift #1",
-          type_model: "Toyota 8FGCU25",
-          category: "Forklifts",
-          status: "active",
-          location: "Warehouse",
-          last_maintenance: "2024-12-18",
-        },
-        {
-          id: 8,
-          equipment_name: "Forklift #2",
-          type_model: "Hyster H50FT",
-          category: "Forklifts",
-          status: "active",
-          location: "Loading Dock",
-          last_maintenance: "2024-12-05",
-        },
-        {
-          id: 9,
-          equipment_name: "Generator A",
-          type_model: "Caterpillar C15",
-          category: "Generators",
-          status: "active",
-          location: "Utility Room",
-          last_maintenance: "2024-11-28",
-        },
-        {
-          id: 10,
-          equipment_name: "Industrial Pump #1",
-          type_model: "Grundfos CR",
-          category: "Pumps",
-          status: "active",
-          location: "Pump House",
-          last_maintenance: "2024-12-08",
-        },
-        {
-          id: 11,
-          equipment_name: "Air Compressor",
-          type_model: "Ingersoll Rand R55",
-          category: "Compressors",
-          status: "maintenance",
-          location: "Utility Room",
-          last_maintenance: "2024-12-20",
-        },
-        {
-          id: 12,
-          equipment_name: "CNC Machine #3",
-          type_model: "DMG MORI",
-          category: "CNC Machines",
-          status: "active",
-          location: "Building B",
-          last_maintenance: "2024-12-17",
-        },
-      ]);
+
+      const equipmentData = equipmentRes.data.map((eq) => ({
+        id: eq._id,
+        equipment_name: eq.name || eq.equipment_name || "",
+        type_model: eq.model || eq.type_model || "",
+        category: eq.category || "",
+        status: eq.status || "operational",
+        location: eq.location?.name || "Unassigned",
+        last_maintenance: eq.lastMaintenanceDate
+          ? new Date(eq.lastMaintenanceDate).toISOString().split("T")[0]
+          : "Never",
+        description: eq.description || "",
+      }));
+
+      setEquipment(equipmentData);
+
+      const categoryData = categoriesRes.data.map((cat, index) =>
+        typeof cat === "string" ? { id: index + 1, name: cat } : cat
+      );
+      setCategories(
+        categoryData.length > 0
+          ? categoryData
+          : [
+              { id: 1, name: "CNC Machines" },
+              { id: 2, name: "HVAC Systems" },
+              { id: 3, name: "Conveyors" },
+              { id: 4, name: "Forklifts" },
+              { id: 5, name: "Generators" },
+              { id: 6, name: "Pumps" },
+              { id: 7, name: "Compressors" },
+            ]
+      );
+    } catch (error) {
+      console.error("Error fetching equipment:", error);
+      toast.error("Failed to load equipment");
+    } finally {
       setLoading(false);
-    }, 500);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
   }, []);
 
   const filteredEquipment = equipment.filter((eq) => {
@@ -201,7 +127,7 @@ const Equipment = () => {
         equipment_name: "",
         type_model: "",
         equipment_category_id: "",
-        status: "active",
+        status: "operational",
         description: "",
       });
     }
@@ -226,7 +152,7 @@ const Equipment = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
@@ -234,33 +160,44 @@ const Equipment = () => {
       (c) => c.id === parseInt(formData.equipment_category_id)
     );
 
-    if (editingEquipment) {
-      setEquipment((prev) =>
-        prev.map((eq) =>
-          eq.id === editingEquipment.id
-            ? { ...eq, ...formData, category: category?.name || "" }
-            : eq
-        )
-      );
-      toast.success("Equipment updated successfully");
-    } else {
-      const newEquipment = {
-        id: Date.now(),
-        ...formData,
-        category: category?.name || "",
-        location: "Unassigned",
-        last_maintenance: "Never",
-      };
-      setEquipment((prev) => [newEquipment, ...prev]);
-      toast.success("Equipment added successfully");
+    try {
+      if (editingEquipment) {
+        await equipmentApi.update(editingEquipment.id, {
+          name: formData.equipment_name,
+          model: formData.type_model,
+          category: category?.name || "",
+          status: formData.status,
+          description: formData.description,
+        });
+        toast.success("Equipment updated successfully");
+      } else {
+        await equipmentApi.create({
+          name: formData.equipment_name,
+          model: formData.type_model,
+          category: category?.name || "",
+          status: formData.status,
+          description: formData.description,
+        });
+        toast.success("Equipment added successfully");
+      }
+      closeModal();
+      fetchData();
+    } catch (error) {
+      console.error("Error saving equipment:", error);
+      toast.error("Failed to save equipment");
     }
-    closeModal();
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (confirm("Are you sure you want to delete this equipment?")) {
-      setEquipment((prev) => prev.filter((eq) => eq.id !== id));
-      toast.success("Equipment deleted successfully");
+      try {
+        await equipmentApi.delete(id);
+        toast.success("Equipment deleted successfully");
+        fetchData();
+      } catch (error) {
+        console.error("Error deleting equipment:", error);
+        toast.error("Failed to delete equipment");
+      }
     }
   };
 
@@ -323,14 +260,13 @@ const Equipment = () => {
       {/* Filters */}
       <div className="card p-4">
         <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+          <div className="flex-1">
             <input
               type="text"
               placeholder="Search equipment..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="input pl-12"
+              className="input"
             />
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -620,9 +556,11 @@ const Equipment = () => {
                 }
                 className="select"
               >
-                <option value="active">Active</option>
+                <option value="operational">Operational</option>
                 <option value="maintenance">Under Maintenance</option>
-                <option value="out-of-service">Out of Service</option>
+                <option value="repair">Repair</option>
+                <option value="offline">Offline</option>
+                <option value="scrapped">Scrapped</option>
               </select>
             </div>
           </div>

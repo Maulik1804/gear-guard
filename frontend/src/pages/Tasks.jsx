@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import {
   Plus,
-  Search,
   Edit2,
   Trash2,
   ClipboardList,
@@ -17,6 +16,7 @@ import EmptyState from "../components/EmptyState";
 import Pagination from "../components/Pagination";
 import StatusBadge, { PriorityBadge } from "../components/StatusBadge";
 import toast from "react-hot-toast";
+import { tasksApi, employeesApi } from "../services/api";
 
 const Tasks = () => {
   const [tasks, setTasks] = useState([]);
@@ -30,6 +30,7 @@ const Tasks = () => {
   const [formData, setFormData] = useState({
     task_activity: "",
     subject_apartment: "",
+    assigned_to_id: "",
     assigned_to: "",
     schedule_date: "",
     priority: "medium",
@@ -39,101 +40,43 @@ const Tasks = () => {
   const [formErrors, setFormErrors] = useState({});
 
   const itemsPerPage = 10;
+  const [employees, setEmployees] = useState([]);
 
-  const employees = [
-    { id: 1, name: "John Smith" },
-    { id: 2, name: "Sarah Johnson" },
-    { id: 3, name: "Mike Brown" },
-    { id: 4, name: "Emily Davis" },
-    { id: 5, name: "Tom Wilson" },
-  ];
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [tasksRes, employeesRes] = await Promise.all([
+        tasksApi.getAll(),
+        employeesApi.getAll(),
+      ]);
+
+      setEmployees(employeesRes.data || []);
+
+      const data = tasksRes.data.map((task) => ({
+        id: task._id,
+        task_activity: task.title || task.name || "",
+        subject_apartment: task.notes || task.location || "",
+        assigned_to_id: task.assignedTo?._id || "",
+        assigned_to: task.assignedTo?.name || "",
+        schedule_date: task.dueDate
+          ? new Date(task.dueDate).toISOString().split("T")[0]
+          : "",
+        priority: task.priority || "medium",
+        status: task.status || "pending",
+        type: task.type || "other",
+        description: task.description || "",
+      }));
+      setTasks(data);
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      toast.error("Failed to load tasks");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setTimeout(() => {
-      setTasks([
-        {
-          id: 1,
-          task_activity: "HVAC Filter Inspection",
-          subject_apartment: "Building A - Floor 2",
-          assigned_to: "John Smith",
-          schedule_date: "2024-12-28",
-          priority: "high",
-          status: "pending",
-          type: "Inspection",
-        },
-        {
-          id: 2,
-          task_activity: "Oil Change - CNC Machine #1",
-          subject_apartment: "CNC Workshop",
-          assigned_to: "Mike Brown",
-          schedule_date: "2024-12-28",
-          priority: "medium",
-          status: "in-progress",
-          type: "Preventive",
-        },
-        {
-          id: 3,
-          task_activity: "Belt Tension Check",
-          subject_apartment: "Assembly Line 1",
-          assigned_to: "Sarah Johnson",
-          schedule_date: "2024-12-27",
-          priority: "low",
-          status: "completed",
-          type: "Inspection",
-        },
-        {
-          id: 4,
-          task_activity: "Generator Fuel System Check",
-          subject_apartment: "Utility Room",
-          assigned_to: "Tom Wilson",
-          schedule_date: "2024-12-29",
-          priority: "high",
-          status: "pending",
-          type: "Preventive",
-        },
-        {
-          id: 5,
-          task_activity: "Forklift Safety Inspection",
-          subject_apartment: "Warehouse",
-          assigned_to: "Emily Davis",
-          schedule_date: "2024-12-30",
-          priority: "medium",
-          status: "pending",
-          type: "Safety",
-        },
-        {
-          id: 6,
-          task_activity: "Conveyor Belt Lubrication",
-          subject_apartment: "Production Floor",
-          assigned_to: "John Smith",
-          schedule_date: "2024-12-28",
-          priority: "medium",
-          status: "in-progress",
-          type: "Preventive",
-        },
-        {
-          id: 7,
-          task_activity: "Electrical Panel Inspection",
-          subject_apartment: "Main Office",
-          assigned_to: "Mike Brown",
-          schedule_date: "2024-12-31",
-          priority: "critical",
-          status: "pending",
-          type: "Safety",
-        },
-        {
-          id: 8,
-          task_activity: "Pump Seal Replacement",
-          subject_apartment: "Pump House",
-          assigned_to: "Sarah Johnson",
-          schedule_date: "2024-12-26",
-          priority: "high",
-          status: "completed",
-          type: "Corrective",
-        },
-      ]);
-      setLoading(false);
-    }, 500);
+    fetchData();
   }, []);
 
   const filteredTasks = tasks.filter((task) => {
@@ -160,6 +103,7 @@ const Tasks = () => {
       setFormData({
         task_activity: task.task_activity,
         subject_apartment: task.subject_apartment,
+        assigned_to_id: task.assigned_to_id || "",
         assigned_to: task.assigned_to,
         schedule_date: task.schedule_date,
         priority: task.priority,
@@ -171,6 +115,7 @@ const Tasks = () => {
       setFormData({
         task_activity: "",
         subject_apartment: "",
+        assigned_to_id: "",
         assigned_to: "",
         schedule_date: "",
         priority: "medium",
@@ -199,31 +144,52 @@ const Tasks = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    if (editingTask) {
-      setTasks((prev) =>
-        prev.map((t) => (t.id === editingTask.id ? { ...t, ...formData } : t))
-      );
-      toast.success("Task updated successfully");
-    } else {
-      const newTask = {
-        id: Date.now(),
-        ...formData,
-        type: "General",
-      };
-      setTasks((prev) => [newTask, ...prev]);
-      toast.success("Task created successfully");
+    try {
+      if (editingTask) {
+        await tasksApi.update(editingTask.id, {
+          title: formData.task_activity,
+          notes: formData.subject_apartment,
+          assignedTo: formData.assigned_to_id || undefined,
+          dueDate: formData.schedule_date,
+          priority: formData.priority,
+          status: formData.status,
+          description: formData.description,
+        });
+        toast.success("Task updated successfully");
+      } else {
+        await tasksApi.create({
+          title: formData.task_activity,
+          notes: formData.subject_apartment,
+          assignedTo: formData.assigned_to_id || undefined,
+          dueDate: formData.schedule_date,
+          priority: formData.priority,
+          status: formData.status,
+          description: formData.description,
+        });
+        toast.success("Task created successfully");
+      }
+      closeModal();
+      fetchData();
+    } catch (error) {
+      console.error("Error saving task:", error);
+      toast.error("Failed to save task");
     }
-    closeModal();
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (confirm("Are you sure you want to delete this task?")) {
-      setTasks((prev) => prev.filter((t) => t.id !== id));
-      toast.success("Task deleted successfully");
+      try {
+        await tasksApi.delete(id);
+        toast.success("Task deleted successfully");
+        fetchData();
+      } catch (error) {
+        console.error("Error deleting task:", error);
+        toast.error("Failed to delete task");
+      }
     }
   };
 
@@ -311,14 +277,13 @@ const Tasks = () => {
       {/* Filters */}
       <div className="card p-4">
         <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+          <div className="flex-1">
             <input
               type="text"
               placeholder="Search tasks..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="input pl-12"
+              className="input"
             />
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -499,15 +464,22 @@ const Tasks = () => {
             <div>
               <label className="label">Assigned To</label>
               <select
-                value={formData.assigned_to}
-                onChange={(e) =>
-                  setFormData({ ...formData, assigned_to: e.target.value })
-                }
+                value={formData.assigned_to_id || ""}
+                onChange={(e) => {
+                  const selectedEmp = employees.find(
+                    (emp) => emp._id === e.target.value
+                  );
+                  setFormData({
+                    ...formData,
+                    assigned_to_id: e.target.value,
+                    assigned_to: selectedEmp?.name || "",
+                  });
+                }}
                 className="select"
               >
                 <option value="">Select employee</option>
                 {employees.map((emp) => (
-                  <option key={emp.id} value={emp.name}>
+                  <option key={emp._id} value={emp._id}>
                     {emp.name}
                   </option>
                 ))}

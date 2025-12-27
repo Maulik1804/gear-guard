@@ -1,6 +1,7 @@
 {
   "name": "gearguard-frontend",
   "version": "1.0.0",
+  "type": "module",
   "description": "GearGuard - The Ultimate Maintenance Tracker Frontend",
   "private": true,
   "scripts": {

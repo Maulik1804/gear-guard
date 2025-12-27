@@ -112,4 +112,14 @@ export const maintenanceSchedulesApi = {
     api.get(`/maintenance-schedules/range?start=${startDate}&end=${endDate}`),
 };
 
+export const notificationsApi = {
+  getAll: (limit = 20, unreadOnly = false) =>
+    api.get(`/notifications?limit=${limit}&unread_only=${unreadOnly}`),
+  getUnreadCount: () => api.get("/notifications/count"),
+  create: (data) => api.post("/notifications", data),
+  markAsRead: (id) => api.put(`/notifications/${id}/read`),
+  markAllAsRead: () => api.put("/notifications/read-all"),
+  delete: (id) => api.delete(`/notifications/${id}`),
+};
+
 export default api;

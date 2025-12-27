@@ -1,18 +1,10 @@
 import { useState, useEffect } from "react";
-import {
-  Plus,
-  Search,
-  Edit2,
-  Trash2,
-  Users,
-  UserPlus,
-  Crown,
-  X,
-} from "lucide-react";
+import { Plus, Edit2, Trash2, Users, UserPlus, Crown, X } from "lucide-react";
 import Modal from "../components/Modal";
 import { PageLoader } from "../components/LoadingSpinner";
 import EmptyState from "../components/EmptyState";
 import toast from "react-hot-toast";
+import { teamsApi, employeesApi } from "../services/api";
 
 const Teams = () => {
   const [teams, setTeams] = useState([]);
@@ -29,89 +21,51 @@ const Teams = () => {
   });
   const [formErrors, setFormErrors] = useState({});
 
-  useEffect(() => {
-    setTimeout(() => {
-      setEmployees([
-        {
-          id: 1,
-          name: "John Smith",
-          position: "Senior Technician",
-          email: "john@example.com",
-        },
-        {
-          id: 2,
-          name: "Sarah Johnson",
-          position: "Maintenance Manager",
-          email: "sarah@example.com",
-        },
-        {
-          id: 3,
-          name: "Mike Brown",
-          position: "Electrician",
-          email: "mike@example.com",
-        },
-        {
-          id: 4,
-          name: "Emily Davis",
-          position: "Mechanic",
-          email: "emily@example.com",
-        },
-        {
-          id: 5,
-          name: "Tom Wilson",
-          position: "Technician",
-          email: "tom@example.com",
-        },
-        {
-          id: 6,
-          name: "Lisa Anderson",
-          position: "HVAC Specialist",
-          email: "lisa@example.com",
-        },
-        {
-          id: 7,
-          name: "David Martinez",
-          position: "Plumber",
-          email: "david@example.com",
-        },
-        {
-          id: 8,
-          name: "Jennifer White",
-          position: "Safety Officer",
-          email: "jennifer@example.com",
-        },
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [teamsRes, employeesRes] = await Promise.all([
+        teamsApi.getAll(),
+        employeesApi.getAll(),
       ]);
-      setTeams([
-        {
-          id: 1,
-          team_name: "Alpha Maintenance",
-          team_leader: { id: 2, name: "Sarah Johnson" },
-          members: [
-            { id: 1, name: "John Smith", position: "Senior Technician" },
-            { id: 3, name: "Mike Brown", position: "Electrician" },
-            { id: 5, name: "Tom Wilson", position: "Technician" },
-          ],
-        },
-        {
-          id: 2,
-          team_name: "Beta Team",
-          team_leader: { id: 4, name: "Emily Davis" },
-          members: [
-            { id: 6, name: "Lisa Anderson", position: "HVAC Specialist" },
-            { id: 7, name: "David Martinez", position: "Plumber" },
-          ],
-        },
-        {
-          id: 3,
-          team_name: "Night Shift Crew",
-          team_leader: { id: 1, name: "John Smith" },
-          members: [
-            { id: 8, name: "Jennifer White", position: "Safety Officer" },
-          ],
-        },
-      ]);
+
+      const employeesData = employeesRes.data.map((emp) => ({
+        id: emp._id,
+        name:
+          `${emp.firstName || ""} ${emp.lastName || ""}`.trim() ||
+          emp.name ||
+          "",
+        position: emp.jobTitle || emp.position || "",
+        email: emp.email || "",
+      }));
+      setEmployees(employeesData);
+
+      const teamsData = teamsRes.data.map((team) => ({
+        id: team._id,
+        team_name: team.name || team.team_name || "",
+        team_leader: team.leader
+          ? {
+              id: team.leader._id || team.leader.id,
+              name: team.leader.name || "",
+            }
+          : null,
+        members: (team.members || []).map((m) => ({
+          id: m._id || m.id,
+          name: m.name || "",
+          position: m.position || m.jobTitle || "",
+        })),
+      }));
+      setTeams(teamsData);
+    } catch (error) {
+      console.error("Error fetching teams:", error);
+      toast.error("Failed to load teams");
+    } finally {
       setLoading(false);
-    }, 500);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
   }, []);
 
   const filteredTeams = teams.filter(
@@ -159,46 +113,48 @@ const Teams = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
     const leader = employees.find(
-      (e) => e.id === parseInt(formData.team_leader_id)
+      (e) =>
+        e.id === formData.team_leader_id ||
+        e.id === parseInt(formData.team_leader_id)
     );
 
-    if (editingTeam) {
-      setTeams((prev) =>
-        prev.map((t) =>
-          t.id === editingTeam.id
-            ? {
-                ...t,
-                team_name: formData.team_name,
-                team_leader: leader
-                  ? { id: leader.id, name: leader.name }
-                  : null,
-              }
-            : t
-        )
-      );
-      toast.success("Team updated successfully");
-    } else {
-      const newTeam = {
-        id: Date.now(),
-        team_name: formData.team_name,
-        team_leader: leader ? { id: leader.id, name: leader.name } : null,
-        members: [],
-      };
-      setTeams((prev) => [newTeam, ...prev]);
-      toast.success("Team created successfully");
+    try {
+      if (editingTeam) {
+        await teamsApi.update(editingTeam.id, {
+          name: formData.team_name,
+          leader: formData.team_leader_id || null,
+        });
+        toast.success("Team updated successfully");
+      } else {
+        await teamsApi.create({
+          name: formData.team_name,
+          leader: formData.team_leader_id || null,
+        });
+        toast.success("Team created successfully");
+      }
+      closeModal();
+      fetchData();
+    } catch (error) {
+      console.error("Error saving team:", error);
+      toast.error("Failed to save team");
     }
-    closeModal();
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (confirm("Are you sure you want to delete this team?")) {
-      setTeams((prev) => prev.filter((t) => t.id !== id));
-      toast.success("Team deleted successfully");
+      try {
+        await teamsApi.delete(id);
+        toast.success("Team deleted successfully");
+        fetchData();
+      } catch (error) {
+        console.error("Error deleting team:", error);
+        toast.error("Failed to delete team");
+      }
     }
   };
 
@@ -286,14 +242,13 @@ const Teams = () => {
 
       {/* Search */}
       <div className="card p-4">
-        <div className="relative max-w-md">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+        <div className="max-w-md">
           <input
             type="text"
             placeholder="Search teams..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="input pl-12"
+            className="input"
           />
         </div>
       </div>

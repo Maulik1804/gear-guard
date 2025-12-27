@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import {
   Plus,
-  Search,
   Edit2,
   Trash2,
   FileText,
@@ -16,6 +15,7 @@ import EmptyState from "../components/EmptyState";
 import Pagination from "../components/Pagination";
 import StatusBadge from "../components/StatusBadge";
 import toast from "react-hot-toast";
+import { workOrdersApi, equipmentApi, workCentersApi } from "../services/api";
 
 const WorkOrders = () => {
   const [workOrders, setWorkOrders] = useState([]);
@@ -27,7 +27,9 @@ const WorkOrders = () => {
   const [editingOrder, setEditingOrder] = useState(null);
   const [formData, setFormData] = useState({
     work_order_number: "",
+    equipment_id: "",
     equipment_name: "",
+    work_center_id: "",
     work_center: "",
     cost: "",
     cost_per_hour: "",
@@ -42,110 +44,53 @@ const WorkOrders = () => {
   const [formErrors, setFormErrors] = useState({});
 
   const itemsPerPage = 10;
+  const [equipmentList, setEquipmentList] = useState([]);
+  const [workCentersList, setWorkCentersList] = useState([]);
 
-  const equipmentList = [
-    "CNC Machine #1",
-    "CNC Machine #2",
-    "HVAC Unit A",
-    "HVAC Unit B",
-    "Conveyor Belt #1",
-    "Forklift #1",
-    "Generator A",
-    "Air Compressor",
-  ];
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [workOrdersRes, equipmentRes, workCentersRes] = await Promise.all([
+        workOrdersApi.getAll(),
+        equipmentApi.getAll(),
+        workCentersApi.getAll(),
+      ]);
 
-  const workCenters = [
-    "Assembly Line 1",
-    "CNC Workshop",
-    "Maintenance Bay",
-    "Warehouse",
-    "Quality Control Lab",
-  ];
+      setEquipmentList(equipmentRes.data || []);
+      setWorkCentersList(workCentersRes.data || []);
+
+      const data = workOrdersRes.data.map((wo) => ({
+        id: wo._id,
+        work_order_number: wo.workOrderNumber || wo.work_order_number || "",
+        equipment_id: wo.equipment?._id || "",
+        equipment_name: wo.equipment?.name || wo.equipment_name || "",
+        work_center_id: wo.workCenter?._id || "",
+        work_center: wo.workCenter?.name || wo.work_center || "",
+        cost: wo.cost || 0,
+        cost_per_hour: wo.costPerHour || wo.cost_per_hour || 0,
+        capacity_task_estimate:
+          wo.estimatedHours || wo.capacity_task_estimate || 0,
+        from_date: wo.startDate
+          ? new Date(wo.startDate).toISOString().split("T")[0]
+          : "",
+        to_date: wo.endDate
+          ? new Date(wo.endDate).toISOString().split("T")[0]
+          : "",
+        status: wo.status || "draft",
+        tag: wo.tag || "",
+        alternative_information: wo.notes || "",
+      }));
+      setWorkOrders(data);
+    } catch (error) {
+      console.error("Error fetching work orders:", error);
+      toast.error("Failed to load work orders");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setTimeout(() => {
-      setWorkOrders([
-        {
-          id: 1,
-          work_order_number: "WO-2024-001",
-          equipment_name: "CNC Machine #1",
-          work_center: "CNC Workshop",
-          cost: 1500.0,
-          cost_per_hour: 75.0,
-          capacity_task_estimate: 8,
-          from_date: "2024-12-20",
-          to_date: "2024-12-28",
-          status: "in-progress",
-          tag: "Preventive",
-        },
-        {
-          id: 2,
-          work_order_number: "WO-2024-002",
-          equipment_name: "HVAC Unit A",
-          work_center: "Maintenance Bay",
-          cost: 800.0,
-          cost_per_hour: 50.0,
-          capacity_task_estimate: 4,
-          from_date: "2024-12-22",
-          to_date: "2024-12-29",
-          status: "pending",
-          tag: "Inspection",
-        },
-        {
-          id: 3,
-          work_order_number: "WO-2024-003",
-          equipment_name: "Conveyor Belt #1",
-          work_center: "Assembly Line 1",
-          cost: 2500.0,
-          cost_per_hour: 100.0,
-          capacity_task_estimate: 12,
-          from_date: "2024-12-15",
-          to_date: "2024-12-20",
-          status: "completed",
-          tag: "Corrective",
-        },
-        {
-          id: 4,
-          work_order_number: "WO-2024-004",
-          equipment_name: "Forklift #1",
-          work_center: "Warehouse",
-          cost: 500.0,
-          cost_per_hour: 40.0,
-          capacity_task_estimate: 3,
-          from_date: "2024-12-25",
-          to_date: "2024-12-27",
-          status: "draft",
-          tag: "Safety",
-        },
-        {
-          id: 5,
-          work_order_number: "WO-2024-005",
-          equipment_name: "Generator A",
-          work_center: "Maintenance Bay",
-          cost: 3000.0,
-          cost_per_hour: 120.0,
-          capacity_task_estimate: 16,
-          from_date: "2024-12-28",
-          to_date: "2025-01-05",
-          status: "pending",
-          tag: "Overhaul",
-        },
-        {
-          id: 6,
-          work_order_number: "WO-2024-006",
-          equipment_name: "Air Compressor",
-          work_center: "Maintenance Bay",
-          cost: 1200.0,
-          cost_per_hour: 60.0,
-          capacity_task_estimate: 6,
-          from_date: "2024-12-24",
-          to_date: "2024-12-26",
-          status: "in-progress",
-          tag: "Preventive",
-        },
-      ]);
-      setLoading(false);
-    }, 500);
+    fetchData();
   }, []);
 
   const filteredOrders = workOrders.filter((order) => {
@@ -176,7 +121,9 @@ const WorkOrders = () => {
       setEditingOrder(order);
       setFormData({
         work_order_number: order.work_order_number,
+        equipment_id: order.equipment_id || "",
         equipment_name: order.equipment_name,
+        work_center_id: order.work_center_id || "",
         work_center: order.work_center,
         cost: order.cost?.toString() || "",
         cost_per_hour: order.cost_per_hour?.toString() || "",
@@ -192,7 +139,9 @@ const WorkOrders = () => {
       setEditingOrder(null);
       setFormData({
         work_order_number: generateOrderNumber(),
+        equipment_id: "",
         equipment_name: "",
+        work_center_id: "",
         work_center: "",
         cost: "",
         cost_per_hour: "",
@@ -219,7 +168,7 @@ const WorkOrders = () => {
     if (!formData.work_order_number.trim()) {
       errors.work_order_number = "Work order number is required";
     }
-    if (!formData.equipment_name) {
+    if (!formData.equipment_id) {
       errors.equipment_name = "Equipment is required";
     }
     if (!formData.from_date) {
@@ -229,37 +178,60 @@ const WorkOrders = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    const orderData = {
-      ...formData,
-      cost: parseFloat(formData.cost) || 0,
-      cost_per_hour: parseFloat(formData.cost_per_hour) || 0,
-      capacity_task_estimate: parseFloat(formData.capacity_task_estimate) || 0,
+    // Map frontend status to backend status
+    const statusMap = {
+      draft: "pending",
+      pending: "pending",
+      "in-progress": "in-progress",
+      completed: "completed",
+      cancelled: "cancelled",
+      "on-hold": "on-hold",
     };
 
-    if (editingOrder) {
-      setWorkOrders((prev) =>
-        prev.map((o) => (o.id === editingOrder.id ? { ...o, ...orderData } : o))
-      );
-      toast.success("Work order updated successfully");
-    } else {
-      const newOrder = {
-        id: Date.now(),
-        ...orderData,
-      };
-      setWorkOrders((prev) => [newOrder, ...prev]);
-      toast.success("Work order created successfully");
+    const orderData = {
+      orderNumber: formData.work_order_number,
+      title: formData.work_order_number, // Use work order number as title
+      equipment: formData.equipment_id || undefined,
+      workCenter: formData.work_center_id || undefined,
+      cost: parseFloat(formData.cost) || 0,
+      estimatedHours: parseFloat(formData.capacity_task_estimate) || 0,
+      scheduledDate: formData.from_date,
+      dueDate: formData.to_date,
+      status: statusMap[formData.status] || "pending",
+      type: formData.tag?.toLowerCase() || "corrective",
+      description: formData.alternative_information,
+    };
+
+    try {
+      if (editingOrder) {
+        await workOrdersApi.update(editingOrder.id, orderData);
+        toast.success("Work order updated successfully");
+      } else {
+        await workOrdersApi.create(orderData);
+        toast.success("Work order created successfully");
+      }
+      closeModal();
+      fetchData();
+    } catch (error) {
+      console.error("Error saving work order:", error);
+      toast.error("Failed to save work order");
     }
-    closeModal();
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (confirm("Are you sure you want to delete this work order?")) {
-      setWorkOrders((prev) => prev.filter((o) => o.id !== id));
-      toast.success("Work order deleted successfully");
+      try {
+        await workOrdersApi.delete(id);
+        toast.success("Work order deleted successfully");
+        fetchData();
+      } catch (error) {
+        console.error("Error deleting work order:", error);
+        toast.error("Failed to delete work order");
+      }
     }
   };
 
@@ -335,14 +307,13 @@ const WorkOrders = () => {
       {/* Filters */}
       <div className="card p-4">
         <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+          <div className="flex-1">
             <input
               type="text"
               placeholder="Search work orders..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="input pl-12"
+              className="input"
             />
           </div>
           <select
@@ -516,18 +487,25 @@ const WorkOrders = () => {
             <div>
               <label className="label">Equipment *</label>
               <select
-                value={formData.equipment_name}
-                onChange={(e) =>
-                  setFormData({ ...formData, equipment_name: e.target.value })
-                }
+                value={formData.equipment_id || ""}
+                onChange={(e) => {
+                  const selectedEquipment = equipmentList.find(
+                    (eq) => eq._id === e.target.value
+                  );
+                  setFormData({
+                    ...formData,
+                    equipment_id: e.target.value,
+                    equipment_name: selectedEquipment?.name || "",
+                  });
+                }}
                 className={`select ${
                   formErrors.equipment_name ? "input-error" : ""
                 }`}
               >
                 <option value="">Select equipment</option>
                 {equipmentList.map((eq) => (
-                  <option key={eq} value={eq}>
-                    {eq}
+                  <option key={eq._id} value={eq._id}>
+                    {eq.name}
                   </option>
                 ))}
               </select>
@@ -541,16 +519,23 @@ const WorkOrders = () => {
             <div>
               <label className="label">Work Center</label>
               <select
-                value={formData.work_center}
-                onChange={(e) =>
-                  setFormData({ ...formData, work_center: e.target.value })
-                }
+                value={formData.work_center_id || ""}
+                onChange={(e) => {
+                  const selectedWC = workCentersList.find(
+                    (wc) => wc._id === e.target.value
+                  );
+                  setFormData({
+                    ...formData,
+                    work_center_id: e.target.value,
+                    work_center: selectedWC?.name || "",
+                  });
+                }}
                 className="select"
               >
                 <option value="">Select work center</option>
-                {workCenters.map((wc) => (
-                  <option key={wc} value={wc}>
-                    {wc}
+                {workCentersList.map((wc) => (
+                  <option key={wc._id} value={wc._id}>
+                    {wc.name}
                   </option>
                 ))}
               </select>

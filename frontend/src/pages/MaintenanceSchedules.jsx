@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import {
   Plus,
-  Search,
   Edit2,
   Trash2,
   Calendar,
@@ -17,6 +16,11 @@ import { PageLoader } from "../components/LoadingSpinner";
 import EmptyState from "../components/EmptyState";
 import StatusBadge from "../components/StatusBadge";
 import toast from "react-hot-toast";
+import {
+  maintenanceSchedulesApi,
+  equipmentApi,
+  employeesApi,
+} from "../services/api";
 import {
   format,
   startOfMonth,
@@ -41,130 +45,68 @@ const MaintenanceSchedules = () => {
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
   const [formData, setFormData] = useState({
+    equipment_id: "",
     equipment_name: "",
+    title: "",
     task_description: "",
     scheduled_date: "",
     scheduled_time: "",
     duration_hours: "",
+    assigned_to_id: "",
     assigned_to: "",
     status: "scheduled",
     notes: "",
   });
   const [formErrors, setFormErrors] = useState({});
+  const [equipmentList, setEquipmentList] = useState([]);
+  const [employees, setEmployees] = useState([]);
 
-  const equipmentList = [
-    "CNC Machine #1",
-    "CNC Machine #2",
-    "HVAC Unit A",
-    "HVAC Unit B",
-    "Conveyor Belt #1",
-    "Forklift #1",
-    "Generator A",
-    "Air Compressor",
-  ];
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [schedulesRes, equipmentRes, employeesRes] = await Promise.all([
+        maintenanceSchedulesApi.getAll(),
+        equipmentApi.getAll(),
+        employeesApi.getAll(),
+      ]);
 
-  const employees = [
-    { id: 1, name: "John Smith" },
-    { id: 2, name: "Sarah Johnson" },
-    { id: 3, name: "Mike Brown" },
-    { id: 4, name: "Emily Davis" },
-    { id: 5, name: "Tom Wilson" },
-  ];
+      // Set equipment and employees
+      setEquipmentList(equipmentRes.data || []);
+      setEmployees(employeesRes.data || []);
+
+      const data = schedulesRes.data.map((schedule) => ({
+        id: schedule._id,
+        equipment_id: schedule.equipment?._id || "",
+        equipment_name:
+          schedule.equipment?.name || schedule.equipment_name || "",
+        task_description:
+          schedule.description || schedule.task_description || "",
+        title: schedule.title || "",
+        scheduled_date: schedule.scheduledDate
+          ? format(new Date(schedule.scheduledDate), "yyyy-MM-dd")
+          : "",
+        scheduled_time: schedule.scheduledTime || schedule.scheduled_time || "",
+        duration_hours:
+          schedule.estimatedDuration ||
+          schedule.durationHours ||
+          schedule.duration_hours ||
+          0,
+        assigned_to_id: schedule.assignedTo?._id || "",
+        assigned_to: schedule.assignedTo?.name || schedule.assigned_to || "",
+        status: schedule.status || "scheduled",
+        notes: schedule.notes || "",
+      }));
+      setSchedules(data);
+    } catch (error) {
+      console.error("Error fetching maintenance schedules:", error);
+      toast.error("Failed to load maintenance schedules");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setTimeout(() => {
-      setSchedules([
-        {
-          id: 1,
-          equipment_name: "CNC Machine #1",
-          task_description: "Preventive maintenance",
-          scheduled_date: "2024-12-28",
-          scheduled_time: "09:00",
-          duration_hours: 4,
-          assigned_to: "John Smith",
-          status: "scheduled",
-          notes: "",
-        },
-        {
-          id: 2,
-          equipment_name: "HVAC Unit A",
-          task_description: "Filter replacement",
-          scheduled_date: "2024-12-28",
-          scheduled_time: "14:00",
-          duration_hours: 2,
-          assigned_to: "Mike Brown",
-          status: "scheduled",
-          notes: "",
-        },
-        {
-          id: 3,
-          equipment_name: "Conveyor Belt #1",
-          task_description: "Belt tension check",
-          scheduled_date: "2024-12-30",
-          scheduled_time: "10:00",
-          duration_hours: 1,
-          assigned_to: "Sarah Johnson",
-          status: "scheduled",
-          notes: "",
-        },
-        {
-          id: 4,
-          equipment_name: "Generator A",
-          task_description: "Annual inspection",
-          scheduled_date: "2024-12-31",
-          scheduled_time: "08:00",
-          duration_hours: 6,
-          assigned_to: "Tom Wilson",
-          status: "scheduled",
-          notes: "",
-        },
-        {
-          id: 5,
-          equipment_name: "Forklift #1",
-          task_description: "Safety inspection",
-          scheduled_date: "2025-01-02",
-          scheduled_time: "09:00",
-          duration_hours: 2,
-          assigned_to: "Emily Davis",
-          status: "scheduled",
-          notes: "",
-        },
-        {
-          id: 6,
-          equipment_name: "Air Compressor",
-          task_description: "Oil change",
-          scheduled_date: "2025-01-05",
-          scheduled_time: "11:00",
-          duration_hours: 3,
-          assigned_to: "John Smith",
-          status: "scheduled",
-          notes: "",
-        },
-        {
-          id: 7,
-          equipment_name: "CNC Machine #2",
-          task_description: "Calibration",
-          scheduled_date: "2024-12-26",
-          scheduled_time: "10:00",
-          duration_hours: 4,
-          assigned_to: "Mike Brown",
-          status: "completed",
-          notes: "",
-        },
-        {
-          id: 8,
-          equipment_name: "HVAC Unit B",
-          task_description: "Coolant level check",
-          scheduled_date: "2024-12-25",
-          scheduled_time: "14:00",
-          duration_hours: 1,
-          assigned_to: "Sarah Johnson",
-          status: "completed",
-          notes: "",
-        },
-      ]);
-      setLoading(false);
-    }, 500);
+    fetchData();
   }, []);
 
   const filteredSchedules = schedules.filter((schedule) => {
@@ -199,11 +141,14 @@ const MaintenanceSchedules = () => {
     if (schedule) {
       setEditingSchedule(schedule);
       setFormData({
+        equipment_id: schedule.equipment_id || "",
         equipment_name: schedule.equipment_name,
+        title: schedule.title || schedule.task_description || "",
         task_description: schedule.task_description,
         scheduled_date: schedule.scheduled_date,
         scheduled_time: schedule.scheduled_time,
         duration_hours: schedule.duration_hours?.toString() || "",
+        assigned_to_id: schedule.assigned_to_id || "",
         assigned_to: schedule.assigned_to,
         status: schedule.status,
         notes: schedule.notes || "",
@@ -211,11 +156,14 @@ const MaintenanceSchedules = () => {
     } else {
       setEditingSchedule(null);
       setFormData({
+        equipment_id: "",
         equipment_name: "",
+        title: "",
         task_description: "",
         scheduled_date: date ? format(date, "yyyy-MM-dd") : "",
         scheduled_time: "",
         duration_hours: "",
+        assigned_to_id: "",
         assigned_to: "",
         status: "scheduled",
         notes: "",
@@ -233,7 +181,7 @@ const MaintenanceSchedules = () => {
 
   const validateForm = () => {
     const errors = {};
-    if (!formData.equipment_name) {
+    if (!formData.equipment_id) {
       errors.equipment_name = "Equipment is required";
     }
     if (!formData.task_description.trim()) {
@@ -246,37 +194,48 @@ const MaintenanceSchedules = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
     const scheduleData = {
-      ...formData,
-      duration_hours: parseFloat(formData.duration_hours) || 0,
+      title: formData.task_description, // Use task description as title
+      equipment: formData.equipment_id,
+      description: formData.task_description,
+      scheduledDate: new Date(formData.scheduled_date),
+      scheduledTime: formData.scheduled_time,
+      estimatedDuration: parseFloat(formData.duration_hours) * 60 || 60, // Convert hours to minutes
+      assignedTo: formData.assigned_to_id || undefined,
+      status: formData.status,
+      notes: formData.notes,
     };
 
-    if (editingSchedule) {
-      setSchedules((prev) =>
-        prev.map((s) =>
-          s.id === editingSchedule.id ? { ...s, ...scheduleData } : s
-        )
-      );
-      toast.success("Schedule updated successfully");
-    } else {
-      const newSchedule = {
-        id: Date.now(),
-        ...scheduleData,
-      };
-      setSchedules((prev) => [newSchedule, ...prev]);
-      toast.success("Schedule created successfully");
+    try {
+      if (editingSchedule) {
+        await maintenanceSchedulesApi.update(editingSchedule.id, scheduleData);
+        toast.success("Schedule updated successfully");
+      } else {
+        await maintenanceSchedulesApi.create(scheduleData);
+        toast.success("Schedule created successfully");
+      }
+      closeModal();
+      fetchData();
+    } catch (error) {
+      console.error("Error saving schedule:", error);
+      toast.error("Failed to save schedule");
     }
-    closeModal();
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (confirm("Are you sure you want to delete this schedule?")) {
-      setSchedules((prev) => prev.filter((s) => s.id !== id));
-      toast.success("Schedule deleted successfully");
+      try {
+        await maintenanceSchedulesApi.delete(id);
+        toast.success("Schedule deleted successfully");
+        fetchData();
+      } catch (error) {
+        console.error("Error deleting schedule:", error);
+        toast.error("Failed to delete schedule");
+      }
     }
   };
 
@@ -354,14 +313,13 @@ const MaintenanceSchedules = () => {
       {/* View Toggle & Filters */}
       <div className="card p-4">
         <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+          <div className="flex-1">
             <input
               type="text"
               placeholder="Search schedules..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="input pl-12"
+              className="input"
             />
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -612,18 +570,25 @@ const MaintenanceSchedules = () => {
             <div>
               <label className="label">Equipment *</label>
               <select
-                value={formData.equipment_name}
-                onChange={(e) =>
-                  setFormData({ ...formData, equipment_name: e.target.value })
-                }
+                value={formData.equipment_id}
+                onChange={(e) => {
+                  const selectedEquipment = equipmentList.find(
+                    (eq) => eq._id === e.target.value
+                  );
+                  setFormData({
+                    ...formData,
+                    equipment_id: e.target.value,
+                    equipment_name: selectedEquipment?.name || "",
+                  });
+                }}
                 className={`select ${
                   formErrors.equipment_name ? "input-error" : ""
                 }`}
               >
                 <option value="">Select equipment</option>
                 {equipmentList.map((eq) => (
-                  <option key={eq} value={eq}>
-                    {eq}
+                  <option key={eq._id} value={eq._id}>
+                    {eq.name}
                   </option>
                 ))}
               </select>
@@ -637,15 +602,22 @@ const MaintenanceSchedules = () => {
             <div>
               <label className="label">Assigned To</label>
               <select
-                value={formData.assigned_to}
-                onChange={(e) =>
-                  setFormData({ ...formData, assigned_to: e.target.value })
-                }
+                value={formData.assigned_to_id}
+                onChange={(e) => {
+                  const selectedEmployee = employees.find(
+                    (emp) => emp._id === e.target.value
+                  );
+                  setFormData({
+                    ...formData,
+                    assigned_to_id: e.target.value,
+                    assigned_to: selectedEmployee?.name || "",
+                  });
+                }}
                 className="select"
               >
                 <option value="">Select assignee</option>
                 {employees.map((emp) => (
-                  <option key={emp.id} value={emp.name}>
+                  <option key={emp._id} value={emp._id}>
                     {emp.name}
                   </option>
                 ))}

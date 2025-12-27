@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import {
   Plus,
-  Search,
   Edit2,
   Trash2,
   MapPin,
@@ -18,6 +17,7 @@ import { PageLoader } from "../components/LoadingSpinner";
 import EmptyState from "../components/EmptyState";
 import Pagination from "../components/Pagination";
 import toast from "react-hot-toast";
+import { locationsApi } from "../services/api";
 
 const Locations = () => {
   const [locations, setLocations] = useState([]);
@@ -48,163 +48,40 @@ const Locations = () => {
   const [formErrors, setFormErrors] = useState({});
   const itemsPerPage = 12;
 
-  const locationTypes = [
-    "Plant",
-    "Building",
-    "Floor",
-    "Zone",
-    "Warehouse",
-    "Office",
-    "Storage",
-  ];
+  const locationTypes = ["building", "floor", "room", "area", "zone"];
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const response = await locationsApi.getAll();
+      const data = response.data.map((loc) => ({
+        id: loc._id,
+        name: loc.name || "",
+        code: loc.code || "",
+        type: loc.type || "",
+        address: loc.address || "",
+        city: loc.city || "",
+        state: loc.state || "",
+        country: loc.country || "",
+        zip_code: loc.zipCode || loc.zip_code || "",
+        description: loc.description || "",
+        contact_person: loc.contactPerson || loc.contact_person || "",
+        contact_phone: loc.contactPhone || loc.contact_phone || "",
+        contact_email: loc.contactEmail || loc.contact_email || "",
+        equipment_count: loc.equipmentCount || loc.equipment_count || 0,
+        is_active: loc.isActive !== false,
+      }));
+      setLocations(data);
+    } catch (error) {
+      console.error("Error fetching locations:", error);
+      toast.error("Failed to load locations");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setTimeout(() => {
-      setLocations([
-        {
-          id: 1,
-          name: "Main Manufacturing Plant",
-          code: "MMP-001",
-          type: "Plant",
-          address: "123 Industrial Way",
-          city: "Detroit",
-          state: "MI",
-          country: "USA",
-          zip_code: "48201",
-          description: "Primary manufacturing facility",
-          contact_person: "Robert Thompson",
-          contact_phone: "555-1001",
-          contact_email: "r.thompson@company.com",
-          equipment_count: 45,
-          is_active: true,
-        },
-        {
-          id: 2,
-          name: "Assembly Building A",
-          code: "AB-A01",
-          type: "Building",
-          address: "123 Industrial Way",
-          city: "Detroit",
-          state: "MI",
-          country: "USA",
-          zip_code: "48201",
-          description: "Main assembly operations",
-          contact_person: "Susan Miller",
-          contact_phone: "555-1002",
-          contact_email: "s.miller@company.com",
-          equipment_count: 28,
-          is_active: true,
-          parent_id: 1,
-        },
-        {
-          id: 3,
-          name: "Assembly Building B",
-          code: "AB-B01",
-          type: "Building",
-          address: "123 Industrial Way",
-          city: "Detroit",
-          state: "MI",
-          country: "USA",
-          zip_code: "48201",
-          description: "Secondary assembly operations",
-          contact_person: "James Wilson",
-          contact_phone: "555-1003",
-          contact_email: "j.wilson@company.com",
-          equipment_count: 22,
-          is_active: true,
-          parent_id: 1,
-        },
-        {
-          id: 4,
-          name: "North Warehouse",
-          code: "WH-N01",
-          type: "Warehouse",
-          address: "456 Storage Blvd",
-          city: "Detroit",
-          state: "MI",
-          country: "USA",
-          zip_code: "48202",
-          description: "Parts and materials storage",
-          contact_person: "Maria Garcia",
-          contact_phone: "555-1004",
-          contact_email: "m.garcia@company.com",
-          equipment_count: 8,
-          is_active: true,
-        },
-        {
-          id: 5,
-          name: "Quality Control Lab",
-          code: "QC-L01",
-          type: "Zone",
-          address: "123 Industrial Way",
-          city: "Detroit",
-          state: "MI",
-          country: "USA",
-          zip_code: "48201",
-          description: "Quality testing and inspection",
-          contact_person: "David Lee",
-          contact_phone: "555-1005",
-          contact_email: "d.lee@company.com",
-          equipment_count: 12,
-          is_active: true,
-          parent_id: 2,
-        },
-        {
-          id: 6,
-          name: "CNC Machining Zone",
-          code: "CNC-Z01",
-          type: "Zone",
-          address: "123 Industrial Way",
-          city: "Detroit",
-          state: "MI",
-          country: "USA",
-          zip_code: "48201",
-          description: "CNC machining operations",
-          contact_person: "Tom Brown",
-          contact_phone: "555-1006",
-          contact_email: "t.brown@company.com",
-          equipment_count: 15,
-          is_active: true,
-          parent_id: 2,
-        },
-        {
-          id: 7,
-          name: "Administrative Office",
-          code: "ADM-001",
-          type: "Office",
-          address: "789 Corporate Dr",
-          city: "Detroit",
-          state: "MI",
-          country: "USA",
-          zip_code: "48203",
-          description: "Administrative and HR offices",
-          contact_person: "Linda Davis",
-          contact_phone: "555-1007",
-          contact_email: "l.davis@company.com",
-          equipment_count: 5,
-          is_active: true,
-        },
-        {
-          id: 8,
-          name: "South Storage",
-          code: "ST-S01",
-          type: "Storage",
-          address: "123 Industrial Way",
-          city: "Detroit",
-          state: "MI",
-          country: "USA",
-          zip_code: "48201",
-          description: "Tool and spare parts storage",
-          contact_person: "Chris Johnson",
-          contact_phone: "555-1008",
-          contact_email: "c.johnson@company.com",
-          equipment_count: 3,
-          is_active: true,
-          parent_id: 1,
-        },
-      ]);
-      setLoading(false);
-    }, 500);
+    fetchData();
   }, []);
 
   const filteredLocations = locations.filter((location) => {
@@ -278,32 +155,59 @@ const Locations = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    if (editingLocation) {
-      setLocations((prev) =>
-        prev.map((loc) =>
-          loc.id === editingLocation.id ? { ...loc, ...formData } : loc
-        )
-      );
-      toast.success("Location updated successfully");
-    } else {
-      const newLocation = {
-        id: Date.now(),
-        ...formData,
-      };
-      setLocations((prev) => [newLocation, ...prev]);
-      toast.success("Location added successfully");
+    // Combine address fields into one address string
+    const fullAddress = [
+      formData.address,
+      formData.city,
+      formData.state,
+      formData.country,
+      formData.zip_code,
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    try {
+      if (editingLocation) {
+        await locationsApi.update(editingLocation.id, {
+          name: formData.name,
+          type: formData.type.toLowerCase(),
+          address: fullAddress,
+          description: formData.description,
+          status: formData.is_active ? "active" : "inactive",
+        });
+        toast.success("Location updated successfully");
+      } else {
+        await locationsApi.create({
+          name: formData.name,
+          type: formData.type.toLowerCase(),
+          address: fullAddress,
+          description: formData.description,
+          status: formData.is_active ? "active" : "inactive",
+        });
+        toast.success("Location added successfully");
+      }
+      closeModal();
+      fetchData();
+    } catch (error) {
+      console.error("Error saving location:", error);
+      toast.error("Failed to save location");
     }
-    closeModal();
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (confirm("Are you sure you want to delete this location?")) {
-      setLocations((prev) => prev.filter((loc) => loc.id !== id));
-      toast.success("Location deleted successfully");
+      try {
+        await locationsApi.delete(id);
+        toast.success("Location deleted successfully");
+        fetchData();
+      } catch (error) {
+        console.error("Error deleting location:", error);
+        toast.error("Failed to delete location");
+      }
     }
   };
 
@@ -429,14 +333,13 @@ const Locations = () => {
       {/* Filters */}
       <div className="card p-4">
         <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+          <div className="flex-1">
             <input
               type="text"
               placeholder="Search locations..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="input pl-12"
+              className="input"
             />
           </div>
           <div className="flex flex-wrap items-center gap-3">

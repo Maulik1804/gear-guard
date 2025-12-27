@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
+import { useSearchParams, Link } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import {
   Plus,
-  Search,
   Filter,
   Clock,
   Wrench,
@@ -14,11 +14,17 @@ import {
   User,
   Edit2,
   Eye,
+  X,
 } from "lucide-react";
 import Modal from "../components/Modal";
 import { PageLoader } from "../components/LoadingSpinner";
 import toast from "react-hot-toast";
 import { format, isPast, parseISO } from "date-fns";
+import {
+  maintenanceSchedulesApi,
+  equipmentApi,
+  employeesApi,
+} from "../services/api";
 
 // Kanban stages configuration
 const STAGES = {
@@ -292,10 +298,15 @@ const KanbanColumn = ({ stage, requests, onEdit, onView, onAddNew }) => {
 };
 
 const MaintenanceKanban = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const equipmentFilter = searchParams.get("equipment") || "";
+
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterPriority, setFilterPriority] = useState("");
+  const [filterEquipment, setFilterEquipment] = useState(equipmentFilter);
+  const [scrappedEquipment, setScrappedEquipment] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewingRequest, setViewingRequest] = useState(null);
   const [editingRequest, setEditingRequest] = useState(null);
@@ -310,25 +321,8 @@ const MaintenanceKanban = () => {
     stage: "new",
   });
   const [formErrors, setFormErrors] = useState({});
-
-  const equipmentList = [
-    "CNC Machine #1",
-    "CNC Machine #2",
-    "HVAC Unit A",
-    "HVAC Unit B",
-    "Conveyor Belt #1",
-    "Forklift #1",
-    "Generator A",
-    "Air Compressor",
-  ];
-
-  const technicians = [
-    { id: 1, name: "John Smith" },
-    { id: 2, name: "Sarah Johnson" },
-    { id: 3, name: "Mike Brown" },
-    { id: 4, name: "Emily Davis" },
-    { id: 5, name: "Tom Wilson" },
-  ];
+  const [equipmentList, setEquipmentList] = useState([]);
+  const [technicians, setTechnicians] = useState([]);
 
   const maintenanceTypes = [
     "Preventive",
@@ -339,103 +333,67 @@ const MaintenanceKanban = () => {
   ];
 
   useEffect(() => {
-    // Simulated data - in real app, fetch from API
-    setTimeout(() => {
-      setRequests([
-        {
-          id: 1,
-          title: "Oil leak repair",
-          equipment_name: "CNC Machine #1",
-          description:
-            "Hydraulic system showing signs of oil leakage near the main cylinder",
-          priority: "high",
-          maintenance_type: "Corrective",
-          assigned_to: "John Smith",
-          due_date: "2024-12-26",
-          stage: "new",
-        },
-        {
-          id: 2,
-          title: "Filter replacement",
-          equipment_name: "HVAC Unit A",
-          description:
-            "Quarterly filter replacement as per maintenance schedule",
-          priority: "medium",
-          maintenance_type: "Preventive",
-          assigned_to: "Sarah Johnson",
-          due_date: "2024-12-28",
-          stage: "new",
-        },
-        {
-          id: 3,
-          title: "Belt tension adjustment",
-          equipment_name: "Conveyor Belt #1",
-          description:
-            "Belt slipping during operation, needs tension adjustment",
-          priority: "urgent",
-          maintenance_type: "Emergency",
-          assigned_to: "Mike Brown",
-          due_date: "2024-12-27",
-          stage: "in-progress",
-        },
-        {
-          id: 4,
-          title: "Annual safety inspection",
-          equipment_name: "Forklift #1",
-          description: "Complete safety inspection and certification renewal",
-          priority: "high",
-          maintenance_type: "Inspection",
-          assigned_to: "Emily Davis",
-          due_date: "2024-12-30",
-          stage: "in-progress",
-        },
-        {
-          id: 5,
-          title: "Generator overhaul",
-          equipment_name: "Generator A",
-          description: "Major overhaul completed - all parts replaced",
-          priority: "high",
-          maintenance_type: "Corrective",
-          assigned_to: "Tom Wilson",
-          due_date: "2024-12-25",
-          stage: "repaired",
-        },
-        {
-          id: 6,
-          title: "Compressor motor failure",
-          equipment_name: "Air Compressor",
-          description: "Motor burnt out - beyond economical repair",
-          priority: "low",
-          maintenance_type: "Corrective",
-          assigned_to: "John Smith",
-          due_date: "2024-12-20",
-          stage: "scrap",
-        },
-        {
-          id: 7,
-          title: "Coolant system flush",
-          equipment_name: "CNC Machine #2",
-          description: "Routine coolant flush and refill",
-          priority: "low",
-          maintenance_type: "Preventive",
-          assigned_to: "",
-          due_date: "2025-01-05",
-          stage: "new",
-        },
-        {
-          id: 8,
-          title: "Thermostat replacement",
-          equipment_name: "HVAC Unit B",
-          description: "Faulty thermostat causing temperature fluctuations",
-          priority: "medium",
-          maintenance_type: "Corrective",
-          assigned_to: "Sarah Johnson",
-          due_date: "2024-12-24",
-          stage: "in-progress",
-        },
-      ]);
-      setLoading(false);
-    }, 500);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [schedulesRes, equipmentRes, employeesRes] = await Promise.all([
+          maintenanceSchedulesApi.getAll(),
+          equipmentApi.getAll(),
+          employeesApi.getAll(),
+        ]);
+
+        setEquipmentList(equipmentRes.data || []);
+        setTechnicians(employeesRes.data || []);
+
+        // Map maintenance schedules to kanban format
+        const mappedRequests = (schedulesRes.data || []).map(
+          (schedule, index) => {
+            // Map status to stage
+            let stage = "new";
+            if (schedule.status === "in-progress") stage = "in-progress";
+            else if (schedule.status === "completed") stage = "repaired";
+            else if (
+              schedule.status === "scrapped" ||
+              schedule.status === "cancelled"
+            )
+              stage = "scrap";
+            else if (schedule.status === "scheduled") stage = "new";
+
+            return {
+              id: schedule._id || index + 1,
+              title:
+                schedule.title || schedule.description || "Maintenance Task",
+              equipment_id: schedule.equipment?._id || "",
+              equipment_name: schedule.equipment?.name || "Unknown Equipment",
+              description: schedule.description || "",
+              priority: schedule.priority || "medium",
+              maintenance_type: schedule.type || "Preventive",
+              assigned_to_id: schedule.assignedTo?._id || "",
+              assigned_to: schedule.assignedTo?.name || "",
+              due_date: schedule.scheduledDate
+                ? new Date(schedule.scheduledDate).toISOString().split("T")[0]
+                : "",
+              stage: stage,
+            };
+          }
+        );
+
+        setRequests(mappedRequests);
+
+        // Track scrapped equipment
+        const scrapped = mappedRequests
+          .filter((r) => r.stage === "scrap")
+          .map((r) => r.equipment_name);
+        setScrappedEquipment(scrapped);
+      } catch (error) {
+        console.error("Error fetching kanban data:", error);
+        toast.error("Failed to load maintenance requests");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   // Filter requests
@@ -449,7 +407,9 @@ const MaintenanceKanban = () => {
         request.assigned_to.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesPriority =
       !filterPriority || request.priority === filterPriority;
-    return matchesSearch && matchesPriority;
+    const matchesEquipment =
+      !filterEquipment || request.equipment_name === filterEquipment;
+    return matchesSearch && matchesPriority && matchesEquipment;
   });
 
   // Group requests by stage
@@ -458,7 +418,7 @@ const MaintenanceKanban = () => {
   };
 
   // Handle drag end
-  const handleDragEnd = (result) => {
+  const handleDragEnd = async (result) => {
     const { destination, source, draggableId } = result;
 
     // If no destination or same position, do nothing
@@ -471,19 +431,63 @@ const MaintenanceKanban = () => {
     }
 
     // Find the request that was dragged
-    const requestId = parseInt(draggableId);
+    const requestId = draggableId;
     const newStage = destination.droppableId;
+    const request = requests.find((r) => r.id === requestId);
 
-    // Update the request's stage
+    if (!request) return;
+
+    // Map stage to backend status
+    const stageToStatus = {
+      new: "scheduled",
+      "in-progress": "in-progress",
+      repaired: "completed",
+      scrap: "scrapped",
+    };
+
+    const newStatus = stageToStatus[newStage] || "scheduled";
+
+    // Optimistically update local state
     setRequests((prev) =>
-      prev.map((request) =>
-        request.id === requestId ? { ...request, stage: newStage } : request
-      )
+      prev.map((r) => (r.id === requestId ? { ...r, stage: newStage } : r))
     );
 
-    // Show toast notification
-    const stageTitle = STAGES[newStage].title;
-    toast.success(`Moved to ${stageTitle}`);
+    try {
+      // Update the status in the database
+      await maintenanceSchedulesApi.update(requestId, {
+        status: newStatus,
+      });
+
+      // SCRAP LOGIC: If moving to scrap stage, mark equipment as unusable
+      if (newStage === "scrap") {
+        const equipmentName = request.equipment_name;
+
+        // Add to scrapped equipment list
+        if (!scrappedEquipment.includes(equipmentName)) {
+          setScrappedEquipment((prev) => [...prev, equipmentName]);
+        }
+
+        // Show warning toast for scrap action
+        toast.error(
+          `⚠️ ${equipmentName} has been marked as SCRAPPED and is no longer usable`,
+          { duration: 5000 }
+        );
+      } else {
+        // Show success toast notification
+        const stageTitle = STAGES[newStage].title;
+        toast.success(`Moved to ${stageTitle}`);
+      }
+    } catch (error) {
+      console.error("Error updating maintenance schedule:", error);
+      toast.error("Failed to update status");
+
+      // Revert the optimistic update on error
+      setRequests((prev) =>
+        prev.map((r) =>
+          r.id === requestId ? { ...r, stage: source.droppableId } : r
+        )
+      );
+    }
   };
 
   const openModal = (request = null) => {
@@ -641,14 +645,13 @@ const MaintenanceKanban = () => {
       {/* Filters */}
       <div className="card p-4">
         <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+          <div className="flex-1">
             <input
               type="text"
               placeholder="Search requests..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="input pl-12"
+              className="input"
             />
           </div>
           <select
@@ -662,8 +665,90 @@ const MaintenanceKanban = () => {
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
+          <div className="flex items-center gap-2">
+            <select
+              value={filterEquipment}
+              onChange={(e) => {
+                setFilterEquipment(e.target.value);
+                if (e.target.value) {
+                  setSearchParams({ equipment: e.target.value });
+                } else {
+                  setSearchParams({});
+                }
+              }}
+              className="select"
+            >
+              <option value="">All Equipment</option>
+              {equipmentList.map((eq) => (
+                <option key={eq._id} value={eq.name}>
+                  {eq.name}{" "}
+                  {scrappedEquipment.includes(eq.name) ? "⚠️ SCRAPPED" : ""}
+                </option>
+              ))}
+            </select>
+            {filterEquipment && (
+              <button
+                onClick={() => {
+                  setFilterEquipment("");
+                  setSearchParams({});
+                }}
+                className="p-2 rounded-lg hover:bg-slate-100 text-slate-500"
+                title="Clear equipment filter"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Equipment Filter Banner */}
+      {filterEquipment && (
+        <div className="bg-primary-50 border border-primary-200 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Wrench className="w-5 h-5 text-primary-600" />
+            <span className="text-primary-900 font-medium">
+              Showing maintenance requests for:{" "}
+              <strong>{filterEquipment}</strong>
+              {scrappedEquipment.includes(filterEquipment) && (
+                <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-bold">
+                  ⚠️ SCRAPPED - UNUSABLE
+                </span>
+              )}
+            </span>
+          </div>
+          <button
+            onClick={() => {
+              setFilterEquipment("");
+              setSearchParams({});
+            }}
+            className="text-primary-600 hover:text-primary-800 font-medium text-sm"
+          >
+            Show All
+          </button>
+        </div>
+      )}
+
+      {/* Scrapped Equipment Warning */}
+      {scrappedEquipment.length > 0 && !filterEquipment && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-600" />
+            <div>
+              <span className="text-red-900 font-medium">
+                Scrapped Equipment ({scrappedEquipment.length}):
+              </span>
+              <span className="text-red-700 ml-2">
+                {scrappedEquipment.join(", ")}
+              </span>
+              <p className="text-red-600 text-sm mt-1">
+                These equipment items are marked as unusable and should not
+                receive new maintenance requests.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Kanban Board */}
       <DragDropContext onDragEnd={handleDragEnd}>
@@ -811,21 +896,25 @@ const MaintenanceKanban = () => {
           <div>
             <label className="label">Equipment *</label>
             <select
-              value={formData.equipment_name}
-              onChange={(e) =>
+              value={formData.equipment_id || ""}
+              onChange={(e) => {
+                const selectedEquipment = equipmentList.find(
+                  (eq) => eq._id === e.target.value
+                );
                 setFormData((prev) => ({
                   ...prev,
-                  equipment_name: e.target.value,
-                }))
-              }
+                  equipment_id: e.target.value,
+                  equipment_name: selectedEquipment?.name || "",
+                }));
+              }}
               className={`select ${
                 formErrors.equipment_name ? "border-red-500" : ""
               }`}
             >
               <option value="">Select equipment</option>
               {equipmentList.map((eq) => (
-                <option key={eq} value={eq}>
-                  {eq}
+                <option key={eq._id} value={eq._id}>
+                  {eq.name}
                 </option>
               ))}
             </select>
@@ -894,18 +983,22 @@ const MaintenanceKanban = () => {
             <div>
               <label className="label">Assign To</label>
               <select
-                value={formData.assigned_to}
-                onChange={(e) =>
+                value={formData.assigned_to_id || ""}
+                onChange={(e) => {
+                  const selectedTech = technicians.find(
+                    (t) => t._id === e.target.value
+                  );
                   setFormData((prev) => ({
                     ...prev,
-                    assigned_to: e.target.value,
-                  }))
-                }
+                    assigned_to_id: e.target.value,
+                    assigned_to: selectedTech?.name || "",
+                  }));
+                }}
                 className="select"
               >
                 <option value="">Unassigned</option>
                 {technicians.map((tech) => (
-                  <option key={tech.id} value={tech.name}>
+                  <option key={tech._id} value={tech._id}>
                     {tech.name}
                   </option>
                 ))}

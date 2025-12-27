@@ -17,128 +17,142 @@ import {
   Building2,
 } from "lucide-react";
 import StatusBadge, { PriorityBadge } from "../components/StatusBadge";
+import { PageLoader } from "../components/LoadingSpinner";
+import toast from "react-hot-toast";
+import {
+  equipmentApi,
+  workOrdersApi,
+  tasksApi,
+  maintenanceSchedulesApi,
+} from "../services/api";
 
 const Dashboard = () => {
+  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
-    totalEquipment: 156,
-    activeWorkOrders: 23,
-    pendingTasks: 45,
-    scheduledMaintenance: 12,
-    completedToday: 8,
-    overdueItems: 3,
+    totalEquipment: 0,
+    activeWorkOrders: 0,
+    pendingTasks: 0,
+    scheduledMaintenance: 0,
+    completedToday: 0,
+    overdueItems: 0,
   });
 
-  const [recentWorkOrders, setRecentWorkOrders] = useState([
-    {
-      id: 1,
-      number: "WO-2024-001",
-      equipment: "CNC Machine #1",
-      status: "in-progress",
-      priority: "high",
-      assignee: "John Smith",
-    },
-    {
-      id: 2,
-      number: "WO-2024-002",
-      equipment: "HVAC Unit A",
-      status: "pending",
-      priority: "medium",
-      assignee: "Sarah Johnson",
-    },
-    {
-      id: 3,
-      number: "WO-2024-003",
-      equipment: "Conveyor Belt #3",
-      status: "completed",
-      priority: "low",
-      assignee: "Mike Brown",
-    },
-    {
-      id: 4,
-      number: "WO-2024-004",
-      equipment: "Forklift #2",
-      status: "draft",
-      priority: "high",
-      assignee: "Emily Davis",
-    },
-    {
-      id: 5,
-      number: "WO-2024-005",
-      equipment: "Generator B",
-      status: "in-progress",
-      priority: "medium",
-      assignee: "Tom Wilson",
-    },
-  ]);
+  const [recentWorkOrders, setRecentWorkOrders] = useState([]);
+  const [upcomingMaintenance, setUpcomingMaintenance] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
 
-  const [upcomingMaintenance, setUpcomingMaintenance] = useState([
-    {
-      id: 1,
-      equipment: "Industrial Pump #1",
-      type: "Preventive",
-      date: "2024-12-28",
-      time: "09:00 AM",
-    },
-    {
-      id: 2,
-      equipment: "Air Compressor",
-      type: "Inspection",
-      date: "2024-12-28",
-      time: "02:00 PM",
-    },
-    {
-      id: 3,
-      equipment: "Electrical Panel A",
-      type: "Calibration",
-      date: "2024-12-29",
-      time: "10:00 AM",
-    },
-    {
-      id: 4,
-      equipment: "CNC Machine #2",
-      type: "Preventive",
-      date: "2024-12-30",
-      time: "11:00 AM",
-    },
-  ]);
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const [equipmentRes, workOrdersRes, tasksRes, maintenanceRes] =
+          await Promise.all([
+            equipmentApi.getAll(),
+            workOrdersApi.getAll(),
+            tasksApi.getAll(),
+            maintenanceSchedulesApi.getAll(),
+          ]);
 
-  const [recentActivity, setRecentActivity] = useState([
-    {
-      id: 1,
-      action: "completed",
-      item: "Work Order WO-2024-003",
-      user: "Mike Brown",
-      time: "10 min ago",
-    },
-    {
-      id: 2,
-      action: "created",
-      item: "Task: Inspect HVAC filters",
-      user: "Sarah Johnson",
-      time: "25 min ago",
-    },
-    {
-      id: 3,
-      action: "updated",
-      item: "Equipment: Forklift #2",
-      user: "Emily Davis",
-      time: "1 hour ago",
-    },
-    {
-      id: 4,
-      action: "assigned",
-      item: "Maintenance schedule",
-      user: "John Smith",
-      time: "2 hours ago",
-    },
-    {
-      id: 5,
-      action: "completed",
-      item: "Task: Oil change on CNC #1",
-      user: "Tom Wilson",
-      time: "3 hours ago",
-    },
-  ]);
+        const equipment = equipmentRes.data || [];
+        const workOrders = workOrdersRes.data || [];
+        const tasks = tasksRes.data || [];
+        const maintenance = maintenanceRes.data || [];
+
+        // Calculate stats
+        const today = new Date().toISOString().split("T")[0];
+        const completedToday = workOrders.filter(
+          (wo) =>
+            wo.status === "completed" && wo.updatedAt?.split("T")[0] === today
+        ).length;
+        const overdueItems = maintenance.filter(
+          (m) =>
+            m.status !== "completed" && new Date(m.scheduledDate) < new Date()
+        ).length;
+
+        setStats({
+          totalEquipment: equipment.length,
+          activeWorkOrders: workOrders.filter(
+            (wo) => wo.status === "in-progress"
+          ).length,
+          pendingTasks: tasks.filter((t) => t.status === "pending").length,
+          scheduledMaintenance: maintenance.filter(
+            (m) => m.status === "scheduled"
+          ).length,
+          completedToday,
+          overdueItems,
+        });
+
+        // Recent work orders (last 5)
+        setRecentWorkOrders(
+          workOrders.slice(0, 5).map((wo) => ({
+            id: wo._id,
+            number: wo.workOrderNumber || `WO-${wo._id?.slice(-6)}`,
+            equipment: wo.equipment?.name || "Unknown Equipment",
+            status: wo.status || "draft",
+            priority: wo.priority || "medium",
+            assignee: wo.assignedTo?.name || "Unassigned",
+          }))
+        );
+
+        // Upcoming maintenance (next 4)
+        const upcomingMaint = maintenance
+          .filter((m) => new Date(m.scheduledDate) >= new Date())
+          .sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate))
+          .slice(0, 4)
+          .map((m) => ({
+            id: m._id,
+            equipment: m.equipment?.name || "Unknown Equipment",
+            type: m.type || "Preventive",
+            date: m.scheduledDate
+              ? new Date(m.scheduledDate).toLocaleDateString()
+              : "",
+            time: m.scheduledTime || "09:00 AM",
+          }));
+        setUpcomingMaintenance(upcomingMaint);
+
+        // Recent activity from work orders and tasks
+        const activities = [
+          ...workOrders.slice(0, 3).map((wo) => ({
+            id: wo._id,
+            action: wo.status === "completed" ? "completed" : "updated",
+            item: `Work Order ${wo.workOrderNumber || wo._id?.slice(-6)}`,
+            user: wo.assignedTo?.name || "System",
+            time: getTimeAgo(wo.updatedAt),
+          })),
+          ...tasks.slice(0, 2).map((t) => ({
+            id: t._id,
+            action: t.status === "completed" ? "completed" : "created",
+            item: `Task: ${t.name || "Unnamed"}`,
+            user: t.assignedTo?.name || "System",
+            time: getTimeAgo(t.updatedAt),
+          })),
+        ];
+        setRecentActivity(activities.slice(0, 5));
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+        toast.error("Failed to load dashboard data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  const getTimeAgo = (dateString) => {
+    if (!dateString) return "recently";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 60) return `${diffMins} min ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24)
+      return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+    return `${Math.floor(diffHours / 24)} day${
+      Math.floor(diffHours / 24) > 1 ? "s" : ""
+    } ago`;
+  };
 
   const statCards = [
     {
@@ -216,6 +230,10 @@ const Dashboard = () => {
         return <Clock className="w-4 h-4 text-slate-400" />;
     }
   };
+
+  if (loading) {
+    return <PageLoader />;
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">

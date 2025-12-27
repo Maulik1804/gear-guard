@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import {
   Plus,
-  Search,
   Edit2,
   Trash2,
   Mail,
@@ -19,6 +18,7 @@ import EmptyState from "../components/EmptyState";
 import StatusBadge from "../components/StatusBadge";
 import Pagination from "../components/Pagination";
 import toast from "react-hot-toast";
+import { employeesApi, workCentersApi } from "../services/api";
 
 const Employees = () => {
   const [employees, setEmployees] = useState([]);
@@ -38,6 +38,7 @@ const Employees = () => {
     department: "",
     job_title: "",
     status: "active",
+    work_center_id: "",
     work_center: "",
     hire_date: "",
     skills: "",
@@ -53,151 +54,50 @@ const Employees = () => {
     "Safety",
     "Administration",
   ];
-  const workCenters = [
-    "Production Floor",
-    "Assembly Line A",
-    "Assembly Line B",
-    "Warehouse",
-    "Quality Lab",
-    "Admin Office",
-  ];
+  const [workCenters, setWorkCenters] = useState([]);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [employeesRes, workCentersRes] = await Promise.all([
+        employeesApi.getAll(),
+        workCentersApi.getAll(),
+      ]);
+
+      setWorkCenters(workCentersRes.data || []);
+
+      const data = employeesRes.data.map((emp) => {
+        // Split name into first and last name
+        const nameParts = (emp.name || "").split(" ");
+        const firstName = nameParts[0] || "";
+        const lastName = nameParts.slice(1).join(" ") || "";
+
+        return {
+          id: emp._id || emp.id,
+          first_name: firstName,
+          last_name: lastName,
+          email: emp.email || "",
+          phone: emp.phone || "",
+          department: emp.department || "",
+          job_title: emp.position || emp.jobTitle || "",
+          status: emp.status || "active",
+          work_center_id: "",
+          work_center: emp.location || "",
+          hire_date: "",
+          skills: "",
+        };
+      });
+      setEmployees(data);
+    } catch (error) {
+      console.error("Error fetching employees:", error);
+      toast.error("Failed to load employees");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setTimeout(() => {
-      setEmployees([
-        {
-          id: 1,
-          first_name: "John",
-          last_name: "Smith",
-          email: "john.smith@company.com",
-          phone: "555-0101",
-          department: "Maintenance",
-          job_title: "Senior Technician",
-          status: "active",
-          work_center: "Production Floor",
-          hire_date: "2020-03-15",
-          skills: "Electrical, HVAC, PLC",
-        },
-        {
-          id: 2,
-          first_name: "Sarah",
-          last_name: "Johnson",
-          email: "sarah.j@company.com",
-          phone: "555-0102",
-          department: "Engineering",
-          job_title: "Maintenance Engineer",
-          status: "active",
-          work_center: "Assembly Line A",
-          hire_date: "2019-07-22",
-          skills: "Mechanical, CAD, Welding",
-        },
-        {
-          id: 3,
-          first_name: "Mike",
-          last_name: "Brown",
-          email: "mike.b@company.com",
-          phone: "555-0103",
-          department: "Maintenance",
-          job_title: "Maintenance Technician",
-          status: "active",
-          work_center: "Assembly Line B",
-          hire_date: "2021-01-10",
-          skills: "Hydraulics, Pneumatics",
-        },
-        {
-          id: 4,
-          first_name: "Emily",
-          last_name: "Davis",
-          email: "emily.d@company.com",
-          phone: "555-0104",
-          department: "Operations",
-          job_title: "Operations Supervisor",
-          status: "active",
-          work_center: "Production Floor",
-          hire_date: "2018-11-05",
-          skills: "Lean Manufacturing, Six Sigma",
-        },
-        {
-          id: 5,
-          first_name: "Tom",
-          last_name: "Wilson",
-          email: "tom.w@company.com",
-          phone: "555-0105",
-          department: "Quality",
-          job_title: "Quality Inspector",
-          status: "active",
-          work_center: "Quality Lab",
-          hire_date: "2020-06-18",
-          skills: "Metrology, ISO Standards",
-        },
-        {
-          id: 6,
-          first_name: "Lisa",
-          last_name: "Anderson",
-          email: "lisa.a@company.com",
-          phone: "555-0106",
-          department: "Safety",
-          job_title: "Safety Coordinator",
-          status: "active",
-          work_center: "Admin Office",
-          hire_date: "2019-09-30",
-          skills: "OSHA, Hazmat, First Aid",
-        },
-        {
-          id: 7,
-          first_name: "David",
-          last_name: "Martinez",
-          email: "david.m@company.com",
-          phone: "555-0107",
-          department: "Maintenance",
-          job_title: "Apprentice Technician",
-          status: "active",
-          work_center: "Warehouse",
-          hire_date: "2023-02-14",
-          skills: "Basic Electrical, Mechanical",
-        },
-        {
-          id: 8,
-          first_name: "Jennifer",
-          last_name: "Taylor",
-          email: "jennifer.t@company.com",
-          phone: "555-0108",
-          department: "Engineering",
-          job_title: "Reliability Engineer",
-          status: "on-leave",
-          work_center: "Production Floor",
-          hire_date: "2017-04-20",
-          skills: "RCM, Vibration Analysis, Oil Analysis",
-        },
-        {
-          id: 9,
-          first_name: "Robert",
-          last_name: "Lee",
-          email: "robert.l@company.com",
-          phone: "555-0109",
-          department: "Maintenance",
-          job_title: "HVAC Specialist",
-          status: "active",
-          work_center: "Assembly Line A",
-          hire_date: "2021-08-12",
-          skills: "HVAC, Refrigeration",
-        },
-        {
-          id: 10,
-          first_name: "Amanda",
-          last_name: "White",
-          email: "amanda.w@company.com",
-          phone: "555-0110",
-          department: "Administration",
-          job_title: "Maintenance Planner",
-          status: "active",
-          work_center: "Admin Office",
-          hire_date: "2022-05-01",
-          skills: "CMMS, Scheduling, Excel",
-        },
-      ]);
-      setLoading(false);
-    }, 500);
+    fetchData();
   }, []);
 
   const filteredEmployees = employees.filter((employee) => {
@@ -230,6 +130,7 @@ const Employees = () => {
         department: employee.department,
         job_title: employee.job_title,
         status: employee.status,
+        work_center_id: employee.work_center_id || "",
         work_center: employee.work_center || "",
         hire_date: employee.hire_date || "",
         skills: employee.skills || "",
@@ -244,6 +145,7 @@ const Employees = () => {
         department: "",
         job_title: "",
         status: "active",
+        work_center_id: "",
         work_center: "",
         hire_date: "",
         skills: "",
@@ -272,32 +174,55 @@ const Employees = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    if (editingEmployee) {
-      setEmployees((prev) =>
-        prev.map((emp) =>
-          emp.id === editingEmployee.id ? { ...emp, ...formData } : emp
-        )
-      );
-      toast.success("Employee updated successfully");
-    } else {
-      const newEmployee = {
-        id: Date.now(),
-        ...formData,
-      };
-      setEmployees((prev) => [newEmployee, ...prev]);
-      toast.success("Employee added successfully");
+    // Combine first and last name for the backend
+    const fullName = `${formData.first_name} ${formData.last_name}`.trim();
+
+    try {
+      if (editingEmployee) {
+        await employeesApi.update(editingEmployee.id, {
+          name: fullName,
+          email: formData.email,
+          phone: formData.phone,
+          department: formData.department,
+          position: formData.job_title,
+          status: formData.status,
+          location: formData.work_center,
+        });
+        toast.success("Employee updated successfully");
+      } else {
+        await employeesApi.create({
+          name: fullName,
+          email: formData.email,
+          phone: formData.phone,
+          department: formData.department,
+          position: formData.job_title,
+          status: formData.status,
+          location: formData.work_center,
+        });
+        toast.success("Employee added successfully");
+      }
+      closeModal();
+      fetchData();
+    } catch (error) {
+      console.error("Error saving employee:", error);
+      toast.error("Failed to save employee");
     }
-    closeModal();
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (confirm("Are you sure you want to delete this employee?")) {
-      setEmployees((prev) => prev.filter((emp) => emp.id !== id));
-      toast.success("Employee deleted successfully");
+      try {
+        await employeesApi.delete(id);
+        toast.success("Employee deleted successfully");
+        fetchData();
+      } catch (error) {
+        console.error("Error deleting employee:", error);
+        toast.error("Failed to delete employee");
+      }
     }
   };
 
@@ -373,14 +298,13 @@ const Employees = () => {
       {/* Filters */}
       <div className="card p-4">
         <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+          <div className="flex-1">
             <input
               type="text"
               placeholder="Search employees..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="input pl-12"
+              className="input"
             />
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -729,16 +653,23 @@ const Employees = () => {
             <div>
               <label className="label">Work Center</label>
               <select
-                value={formData.work_center}
-                onChange={(e) =>
-                  setFormData({ ...formData, work_center: e.target.value })
-                }
+                value={formData.work_center_id || ""}
+                onChange={(e) => {
+                  const selectedWC = workCenters.find(
+                    (wc) => wc._id === e.target.value
+                  );
+                  setFormData({
+                    ...formData,
+                    work_center_id: e.target.value,
+                    work_center: selectedWC?.name || "",
+                  });
+                }}
                 className="select"
               >
                 <option value="">Select work center</option>
                 {workCenters.map((wc) => (
-                  <option key={wc} value={wc}>
-                    {wc}
+                  <option key={wc._id} value={wc._id}>
+                    {wc.name}
                   </option>
                 ))}
               </select>

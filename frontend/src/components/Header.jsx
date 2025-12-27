@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { Menu, Bell, Search, ChevronDown } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { notificationsApi } from "../services/api";
+import { formatDistanceToNow } from "date-fns";
 
 const pageNames = {
   "/dashboard": "Dashboard",
@@ -21,6 +23,8 @@ const Header = ({ onMenuClick }) => {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const currentPage =
     pageNames[location.pathname] ||
@@ -29,31 +33,63 @@ const Header = ({ onMenuClick }) => {
     )?.[1] ||
     "Dashboard";
 
-  const notifications = [
-    {
-      id: 1,
-      title: "Maintenance Due",
-      message: "Equipment #123 maintenance is due tomorrow",
-      time: "5 min ago",
-      unread: true,
-    },
-    {
-      id: 2,
-      title: "Task Completed",
-      message: "John completed the HVAC inspection",
-      time: "1 hour ago",
-      unread: true,
-    },
-    {
-      id: 3,
-      title: "New Work Order",
-      message: "New work order #WO-456 created",
-      time: "3 hours ago",
-      unread: false,
-    },
-  ];
+  // Fetch notifications from API
+  const fetchNotifications = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      setLoading(true);
+      const response = await notificationsApi.getAll(20, false);
+      const notifs = response.data.map((n) => ({
+        id: n.id,
+        title: n.title,
+        message: n.message,
+        time: n.created_at
+          ? formatDistanceToNow(new Date(n.created_at), { addSuffix: true })
+          : "Just now",
+        unread: !n.is_read,
+        type: n.notification_type,
+        referenceType: n.reference_type,
+        referenceId: n.reference_id,
+      }));
+      setNotifications(notifs);
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
+
+  // Fetch notifications on mount and periodically
+  useEffect(() => {
+    fetchNotifications();
+
+    // Poll for new notifications every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
   const unreadCount = notifications.filter((n) => n.unread).length;
+
+  const markAllAsRead = async () => {
+    try {
+      await notificationsApi.markAllAsRead();
+      setNotifications(notifications.map((n) => ({ ...n, unread: false })));
+    } catch (error) {
+      console.error("Failed to mark all as read:", error);
+    }
+  };
+
+  const markAsRead = async (id) => {
+    try {
+      await notificationsApi.markAsRead(id);
+      setNotifications(
+        notifications.map((n) => (n.id === id ? { ...n, unread: false } : n))
+      );
+    } catch (error) {
+      console.error("Failed to mark as read:", error);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200">
@@ -124,14 +160,18 @@ const Header = ({ onMenuClick }) => {
                     <h3 className="font-semibold text-slate-900">
                       Notifications
                     </h3>
-                    <span className="text-xs text-primary-600 font-medium cursor-pointer hover:underline">
+                    <button
+                      onClick={markAllAsRead}
+                      className="text-xs text-primary-600 font-medium cursor-pointer hover:underline"
+                    >
                       Mark all as read
-                    </span>
+                    </button>
                   </div>
                   <div className="max-h-80 overflow-y-auto">
                     {notifications.map((notification) => (
                       <div
                         key={notification.id}
+                        onClick={() => markAsRead(notification.id)}
                         className={`px-4 py-3 border-b border-slate-50 hover:bg-slate-50 cursor-pointer transition-colors ${
                           notification.unread ? "bg-primary-50/30" : ""
                         }`}

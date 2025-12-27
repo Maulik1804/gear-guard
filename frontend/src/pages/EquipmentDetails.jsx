@@ -14,10 +14,16 @@ import {
   AlertTriangle,
   CheckCircle2,
   TrendingUp,
+  ClipboardList,
 } from "lucide-react";
 import { PageLoader } from "../components/LoadingSpinner";
 import StatusBadge, { PriorityBadge } from "../components/StatusBadge";
 import toast from "react-hot-toast";
+import {
+  equipmentApi,
+  maintenanceSchedulesApi,
+  workOrdersApi,
+} from "../services/api";
 
 const EquipmentDetails = () => {
   const { id } = useParams();
@@ -25,90 +31,99 @@ const EquipmentDetails = () => {
   const [equipment, setEquipment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
-
-  const [maintenanceHistory, setMaintenanceHistory] = useState([
-    {
-      id: 1,
-      date: "2024-12-15",
-      type: "Preventive",
-      description: "Oil change and filter replacement",
-      technician: "John Smith",
-      status: "completed",
-    },
-    {
-      id: 2,
-      date: "2024-11-20",
-      type: "Corrective",
-      description: "Replaced worn bearings",
-      technician: "Mike Brown",
-      status: "completed",
-    },
-    {
-      id: 3,
-      date: "2024-10-10",
-      type: "Inspection",
-      description: "Monthly safety inspection",
-      technician: "Sarah Johnson",
-      status: "completed",
-    },
-    {
-      id: 4,
-      date: "2024-09-05",
-      type: "Preventive",
-      description: "Belt tension adjustment",
-      technician: "Tom Wilson",
-      status: "completed",
-    },
-  ]);
-
-  const [workOrders, setWorkOrders] = useState([
-    {
-      id: 1,
-      number: "WO-2024-045",
-      title: "Scheduled maintenance",
-      priority: "medium",
-      status: "in-progress",
-      due_date: "2024-12-30",
-    },
-    {
-      id: 2,
-      number: "WO-2024-032",
-      title: "Calibration check",
-      priority: "low",
-      status: "pending",
-      due_date: "2025-01-05",
-    },
-  ]);
+  const [maintenanceHistory, setMaintenanceHistory] = useState([]);
+  const [workOrders, setWorkOrders] = useState([]);
 
   useEffect(() => {
-    setTimeout(() => {
-      setEquipment({
-        id: parseInt(id),
-        equipment_name: "CNC Machine #1",
-        type_model: "Haas VF-2",
-        serial_number: "HVF2-2024-0012",
-        category: "CNC Machines",
-        status: "active",
-        location: "Building A - Bay 3",
-        work_center: "CNC Workshop",
-        responsible_person: "John Smith",
-        purchase_date: "2022-06-15",
-        warranty_expiry: "2025-06-15",
-        last_maintenance: "2024-12-15",
-        next_maintenance: "2025-01-15",
-        total_maintenance_count: 24,
-        uptime_percentage: 98.5,
-        description:
-          'High-precision vertical machining center for complex parts manufacturing. Features 20+4 side-mount tool changer, 30" x 16" x 20" travels, and 10,000 rpm spindle.',
-      });
-      setLoading(false);
-    }, 500);
+    const fetchEquipmentDetails = async () => {
+      try {
+        setLoading(true);
+        const [equipmentRes, maintenanceRes, workOrdersRes] = await Promise.all(
+          [
+            equipmentApi.getById(id),
+            maintenanceSchedulesApi.getAll(),
+            workOrdersApi.getAll(),
+          ]
+        );
+
+        const eq = equipmentRes.data;
+        setEquipment({
+          id: eq._id,
+          equipment_name: eq.name || "",
+          type_model: eq.model || "",
+          serial_number: eq.serialNumber || "",
+          category: eq.category || "",
+          status: eq.status || "active",
+          location: eq.location?.name || "",
+          work_center: eq.workCenter?.name || "",
+          responsible_person: eq.responsiblePerson?.name || "",
+          purchase_date: eq.purchaseDate
+            ? new Date(eq.purchaseDate).toISOString().split("T")[0]
+            : "",
+          warranty_expiry: eq.warrantyExpiry
+            ? new Date(eq.warrantyExpiry).toISOString().split("T")[0]
+            : "",
+          last_maintenance: eq.lastMaintenanceDate
+            ? new Date(eq.lastMaintenanceDate).toISOString().split("T")[0]
+            : "",
+          next_maintenance: eq.nextMaintenanceDate
+            ? new Date(eq.nextMaintenanceDate).toISOString().split("T")[0]
+            : "",
+          total_maintenance_count: eq.maintenanceCount || 0,
+          uptime_percentage: eq.uptimePercentage || 0,
+          description: eq.description || "",
+        });
+
+        // Filter maintenance history for this equipment
+        const equipmentMaintenance = (maintenanceRes.data || [])
+          .filter((m) => m.equipment?._id === id)
+          .map((m) => ({
+            id: m._id,
+            date: m.scheduledDate
+              ? new Date(m.scheduledDate).toISOString().split("T")[0]
+              : "",
+            type: m.type || "Preventive",
+            description: m.description || "",
+            technician: m.assignedTo?.name || "Unassigned",
+            status: m.status || "scheduled",
+          }));
+        setMaintenanceHistory(equipmentMaintenance);
+
+        // Filter work orders for this equipment
+        const equipmentWorkOrders = (workOrdersRes.data || [])
+          .filter((wo) => wo.equipment?._id === id)
+          .map((wo) => ({
+            id: wo._id,
+            number: wo.workOrderNumber || `WO-${wo._id?.slice(-6)}`,
+            title: wo.title || wo.notes || "Work Order",
+            priority: wo.priority || "medium",
+            status: wo.status || "pending",
+            due_date: wo.endDate
+              ? new Date(wo.endDate).toISOString().split("T")[0]
+              : "",
+          }));
+        setWorkOrders(equipmentWorkOrders);
+      } catch (error) {
+        console.error("Error fetching equipment details:", error);
+        toast.error("Failed to load equipment details");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEquipmentDetails();
   }, [id]);
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (confirm("Are you sure you want to delete this equipment?")) {
-      toast.success("Equipment deleted successfully");
-      navigate("/equipment");
+      try {
+        await equipmentApi.delete(id);
+        toast.success("Equipment deleted successfully");
+        navigate("/equipment");
+      } catch (error) {
+        console.error("Error deleting equipment:", error);
+        toast.error("Failed to delete equipment");
+      }
     }
   };
 
@@ -192,6 +207,22 @@ const EquipmentDetails = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Smart Maintenance Button */}
+            <Link
+              to={`/maintenance-kanban?equipment=${encodeURIComponent(
+                equipment.equipment_name
+              )}`}
+              className="btn-primary relative"
+            >
+              <ClipboardList className="w-4 h-4" />
+              Maintenance
+              {/* Badge with open request count */}
+              {workOrders.length > 0 && (
+                <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                  {workOrders.length}
+                </span>
+              )}
+            </Link>
             <button className="btn-outline">
               <Edit2 className="w-4 h-4" />
               Edit

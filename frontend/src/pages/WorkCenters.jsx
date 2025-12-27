@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import {
   Plus,
-  Search,
   Edit2,
   Trash2,
   Building2,
@@ -13,6 +12,7 @@ import { PageLoader } from "../components/LoadingSpinner";
 import EmptyState from "../components/EmptyState";
 import Pagination from "../components/Pagination";
 import toast from "react-hot-toast";
+import { workCentersApi } from "../services/api";
 
 const WorkCenters = () => {
   const [workCenters, setWorkCenters] = useState([]);
@@ -31,69 +31,30 @@ const WorkCenters = () => {
 
   const itemsPerPage = 10;
 
-  // Sample data
-  useEffect(() => {
-    setTimeout(() => {
-      setWorkCenters([
-        {
-          id: 1,
-          name: "Assembly Line 1",
-          work_center_group: "Manufacturing",
-          equipment_count: 15,
-          created_at: "2024-01-15",
-        },
-        {
-          id: 2,
-          name: "Assembly Line 2",
-          work_center_group: "Manufacturing",
-          equipment_count: 12,
-          created_at: "2024-02-20",
-        },
-        {
-          id: 3,
-          name: "Welding Station",
-          work_center_group: "Fabrication",
-          equipment_count: 8,
-          created_at: "2024-03-10",
-        },
-        {
-          id: 4,
-          name: "Paint Booth",
-          work_center_group: "Finishing",
-          equipment_count: 5,
-          created_at: "2024-03-15",
-        },
-        {
-          id: 5,
-          name: "Quality Control Lab",
-          work_center_group: "Quality",
-          equipment_count: 20,
-          created_at: "2024-04-01",
-        },
-        {
-          id: 6,
-          name: "Packaging Area",
-          work_center_group: "Shipping",
-          equipment_count: 10,
-          created_at: "2024-04-15",
-        },
-        {
-          id: 7,
-          name: "CNC Workshop",
-          work_center_group: "Machining",
-          equipment_count: 18,
-          created_at: "2024-05-01",
-        },
-        {
-          id: 8,
-          name: "Maintenance Bay",
-          work_center_group: "Support",
-          equipment_count: 6,
-          created_at: "2024-05-10",
-        },
-      ]);
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const response = await workCentersApi.getAll();
+      const data = response.data.map((wc) => ({
+        id: wc._id,
+        name: wc.name || "",
+        work_center_group: wc.group || wc.work_center_group || "",
+        equipment_count: wc.equipmentCount || 0,
+        created_at: wc.createdAt
+          ? new Date(wc.createdAt).toISOString().split("T")[0]
+          : "",
+      }));
+      setWorkCenters(data);
+    } catch (error) {
+      console.error("Error fetching work centers:", error);
+      toast.error("Failed to load work centers");
+    } finally {
       setLoading(false);
-    }, 500);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
   }, []);
 
   const groups = [...new Set(workCenters.map((wc) => wc.work_center_group))];
@@ -146,34 +107,42 @@ const WorkCenters = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    if (editingWorkCenter) {
-      setWorkCenters((prev) =>
-        prev.map((wc) =>
-          wc.id === editingWorkCenter.id ? { ...wc, ...formData } : wc
-        )
-      );
-      toast.success("Work center updated successfully");
-    } else {
-      const newWorkCenter = {
-        id: Date.now(),
-        ...formData,
-        equipment_count: 0,
-        created_at: new Date().toISOString().split("T")[0],
-      };
-      setWorkCenters((prev) => [newWorkCenter, ...prev]);
-      toast.success("Work center created successfully");
+    try {
+      if (editingWorkCenter) {
+        await workCentersApi.update(editingWorkCenter.id, {
+          name: formData.name,
+          group: formData.work_center_group,
+        });
+        toast.success("Work center updated successfully");
+      } else {
+        await workCentersApi.create({
+          name: formData.name,
+          group: formData.work_center_group,
+        });
+        toast.success("Work center created successfully");
+      }
+      closeModal();
+      fetchData();
+    } catch (error) {
+      console.error("Error saving work center:", error);
+      toast.error("Failed to save work center");
     }
-    closeModal();
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (confirm("Are you sure you want to delete this work center?")) {
-      setWorkCenters((prev) => prev.filter((wc) => wc.id !== id));
-      toast.success("Work center deleted successfully");
+      try {
+        await workCentersApi.delete(id);
+        toast.success("Work center deleted successfully");
+        fetchData();
+      } catch (error) {
+        console.error("Error deleting work center:", error);
+        toast.error("Failed to delete work center");
+      }
     }
     setActiveDropdown(null);
   };
@@ -201,14 +170,13 @@ const WorkCenters = () => {
       {/* Filters */}
       <div className="card p-4">
         <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+          <div className="flex-1">
             <input
               type="text"
               placeholder="Search work centers..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="input pl-12"
+              className="input"
             />
           </div>
           <div className="flex items-center gap-3">
