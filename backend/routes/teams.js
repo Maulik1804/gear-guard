@@ -1,10 +1,14 @@
 const express = require("express");
 const router = express.Router();
 const Team = require("../models/Team");
+const authenticate = require("../middleware/auth");
+const { applyCompanyFilter, getCompanyId } = require("../utils/companyScope");
+
+router.use(authenticate);
 
 router.get("/", async (req, res) => {
   try {
-    const teams = await Team.find()
+    const teams = await Team.find(applyCompanyFilter(req))
       .populate("leader")
       .populate("company")
       .populate("members.employee")
@@ -17,7 +21,9 @@ router.get("/", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   try {
-    const team = await Team.findById(req.params.id)
+    const team = await Team.findOne(
+      applyCompanyFilter(req, { _id: req.params.id }),
+    )
       .populate("leader")
       .populate("company")
       .populate("members.employee");
@@ -30,7 +36,11 @@ router.get("/:id", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const team = await Team.create(req.body);
+    const companyId = getCompanyId(req);
+    const team = await Team.create({
+      ...req.body,
+      company: req.body.company || companyId,
+    });
     const populated = await Team.findById(team._id)
       .populate("leader")
       .populate("company");
@@ -42,10 +52,17 @@ router.post("/", async (req, res) => {
 
 router.put("/:id", async (req, res) => {
   try {
-    const team = await Team.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    })
+    const team = await Team.findOneAndUpdate(
+      applyCompanyFilter(req, { _id: req.params.id }),
+      applyCompanyFilter(req, {
+        ...req.body,
+        company: req.body.company || getCompanyId(req),
+      }),
+      {
+        new: true,
+        runValidators: true,
+      },
+    )
       .populate("leader")
       .populate("company");
     if (!team) return res.status(404).json({ message: "Team not found" });
@@ -57,7 +74,9 @@ router.put("/:id", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   try {
-    const team = await Team.findByIdAndDelete(req.params.id);
+    const team = await Team.findOneAndDelete(
+      applyCompanyFilter(req, { _id: req.params.id }),
+    );
     if (!team) return res.status(404).json({ message: "Team not found" });
     res.json({ message: "Team deleted successfully" });
   } catch (error) {
@@ -68,10 +87,12 @@ router.delete("/:id", async (req, res) => {
 router.post("/:id/members", async (req, res) => {
   try {
     const { employee_id } = req.body;
-    const team = await Team.findById(req.params.id);
+    const team = await Team.findOne(
+      applyCompanyFilter(req, { _id: req.params.id }),
+    );
     if (!team) return res.status(404).json({ message: "Team not found" });
     const exists = team.members.some(
-      (m) => m.employee.toString() === employee_id
+      (m) => m.employee.toString() === employee_id,
     );
     if (exists)
       return res
@@ -90,10 +111,12 @@ router.post("/:id/members", async (req, res) => {
 
 router.delete("/:id/members/:memberId", async (req, res) => {
   try {
-    const team = await Team.findById(req.params.id);
+    const team = await Team.findOne(
+      applyCompanyFilter(req, { _id: req.params.id }),
+    );
     if (!team) return res.status(404).json({ message: "Team not found" });
     team.members = team.members.filter(
-      (m) => m._id.toString() !== req.params.memberId
+      (m) => m._id.toString() !== req.params.memberId,
     );
     await team.save();
     res.json({ message: "Member removed successfully" });

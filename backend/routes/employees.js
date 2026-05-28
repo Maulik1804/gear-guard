@@ -1,11 +1,16 @@
 const express = require("express");
 const router = express.Router();
+const crypto = require("crypto");
 const Employee = require("../models/Employee");
 const User = require("../models/User");
+const authenticate = require("../middleware/auth");
+const { applyCompanyFilter, getCompanyId } = require("../utils/companyScope");
+
+router.use(authenticate);
 
 router.get("/", async (req, res) => {
   try {
-    const employees = await Employee.find()
+    const employees = await Employee.find(applyCompanyFilter(req))
       .populate("user", "name email")
       .populate("company")
       .sort({ createdAt: -1 });
@@ -32,7 +37,9 @@ router.get("/", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   try {
-    const employee = await Employee.findById(req.params.id)
+    const employee = await Employee.findOne(
+      applyCompanyFilter(req, { _id: req.params.id }),
+    )
       .populate("user", "name email")
       .populate("company");
     if (!employee)
@@ -70,18 +77,23 @@ router.post("/", async (req, res) => {
       location,
       company,
     } = req.body;
+    if (!name?.trim() || !email?.trim()) {
+      return res.status(400).json({ message: "Name and email are required" });
+    }
+    const companyId = getCompanyId(req);
+    const employeeCompany = company || companyId;
     const user = await User.create({
       name,
       email,
-      password: password || "defaultPassword123",
-      company,
+      password: password || crypto.randomBytes(16).toString("hex"),
+      company: employeeCompany,
       role: "user",
     });
     const count = await Employee.countDocuments();
     const employee = await Employee.create({
       user: user._id,
       employeeCode: `EMP-${String(count + 1).padStart(4, "0")}`,
-      company,
+      company: employeeCompany,
       department,
       position,
       phone,
@@ -99,7 +111,7 @@ router.post("/", async (req, res) => {
       phone,
       status,
       location,
-      company,
+      company: employeeCompany,
       createdAt: employee.createdAt,
     });
   } catch (error) {
@@ -111,15 +123,23 @@ router.put("/:id", async (req, res) => {
   try {
     const { name, email, department, position, phone, status, location } =
       req.body;
-    const employee = await Employee.findById(req.params.id);
+    const employee = await Employee.findOne(
+      applyCompanyFilter(req, { _id: req.params.id }),
+    );
     if (!employee)
       return res.status(404).json({ message: "Employee not found" });
     if (employee.user && (name || email))
       await User.findByIdAndUpdate(employee.user, { name, email });
     const updated = await Employee.findByIdAndUpdate(
-      req.params.id,
-      { department, position, phone, status, location },
-      { new: true, runValidators: true }
+      applyCompanyFilter(req, { _id: req.params.id }),
+      applyCompanyFilter(req, {
+        department,
+        position,
+        phone,
+        status,
+        location,
+      }),
+      { new: true, runValidators: true },
     ).populate("user", "name email");
     res.json({
       id: updated._id,
@@ -142,7 +162,9 @@ router.put("/:id", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   try {
-    const employee = await Employee.findById(req.params.id);
+    const employee = await Employee.findOne(
+      applyCompanyFilter(req, { _id: req.params.id }),
+    );
     if (!employee)
       return res.status(404).json({ message: "Employee not found" });
     if (employee.user) await User.findByIdAndDelete(employee.user);

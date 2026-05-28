@@ -1,10 +1,14 @@
 const express = require("express");
 const router = express.Router();
 const Equipment = require("../models/Equipment");
+const authenticate = require("../middleware/auth");
+const { applyCompanyFilter, getCompanyId } = require("../utils/companyScope");
+
+router.use(authenticate);
 
 router.get("/", async (req, res) => {
   try {
-    const equipment = await Equipment.find()
+    const equipment = await Equipment.find(applyCompanyFilter(req))
       .populate("company")
       .populate("location")
       .populate("workCenter")
@@ -26,7 +30,9 @@ router.get("/categories", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   try {
-    const equipment = await Equipment.findById(req.params.id)
+    const equipment = await Equipment.findOne(
+      applyCompanyFilter(req, { _id: req.params.id }),
+    )
       .populate("company")
       .populate("location")
       .populate("workCenter");
@@ -40,6 +46,13 @@ router.get("/:id", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
+    if (!req.body.name?.trim()) {
+      return res.status(400).json({ message: "Equipment name is required" });
+    }
+    const companyId = getCompanyId(req);
+    if (companyId && !req.body.company) {
+      req.body.company = companyId;
+    }
     if (!req.body.equipmentCode) {
       const count = await Equipment.countDocuments();
       req.body.equipmentCode = `EQ-${String(count + 1).padStart(4, "0")}`;
@@ -61,10 +74,10 @@ router.post("/categories", async (req, res) => {
 
 router.put("/:id", async (req, res) => {
   try {
-    const equipment = await Equipment.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
+    const equipment = await Equipment.findOneAndUpdate(
+      applyCompanyFilter(req, { _id: req.params.id }),
+      applyCompanyFilter(req, req.body),
+      { new: true, runValidators: true },
     )
       .populate("location")
       .populate("workCenter");
@@ -78,7 +91,9 @@ router.put("/:id", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   try {
-    const equipment = await Equipment.findByIdAndDelete(req.params.id);
+    const equipment = await Equipment.findOneAndDelete(
+      applyCompanyFilter(req, { _id: req.params.id }),
+    );
     if (!equipment)
       return res.status(404).json({ message: "Equipment not found" });
     res.json({ message: "Equipment deleted successfully" });

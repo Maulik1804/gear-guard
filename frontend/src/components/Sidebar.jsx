@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -33,11 +34,30 @@ const navigation = [
 const Sidebar = ({ isOpen, onClose }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const [avatar, setAvatar] = useState(null);
+
+  // Load avatar from localStorage
+  useEffect(() => {
+    const savedAvatar = localStorage.getItem("gearguard_avatar");
+    if (savedAvatar) {
+      setAvatar(savedAvatar);
+    }
+
+    // Listen for storage changes
+    const handleStorageChange = (e) => {
+      if (e.key === "gearguard_avatar") {
+        setAvatar(e.newValue);
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
 
   return (
     <>
       {/* Desktop sidebar */}
       <aside
+        id="app-sidebar"
         className={`
         fixed top-0 left-0 z-50 h-full w-72 bg-white border-r border-slate-200 
         transform transition-transform duration-300 ease-in-out
@@ -58,10 +78,12 @@ const Sidebar = ({ isOpen, onClose }) => {
               </div>
             </div>
             <button
+              type="button"
               onClick={onClose}
-              className="lg:hidden p-2 rounded-lg hover:bg-slate-100 text-slate-500"
+              aria-label="Close navigation menu"
+              className="lg:hidden p-2 rounded-lg hover:bg-slate-100 text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5" aria-hidden="true" />
             </button>
           </div>
 
@@ -129,9 +151,17 @@ const Sidebar = ({ isOpen, onClose }) => {
           {/* User section */}
           <div className="p-4 border-t border-slate-200">
             <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-full flex items-center justify-center text-white font-semibold">
-                {user?.name?.charAt(0).toUpperCase() || "U"}
-              </div>
+              {avatar ? (
+                <img
+                  src={avatar}
+                  alt="Avatar"
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-full flex items-center justify-center text-white font-semibold">
+                  {user?.name?.charAt(0).toUpperCase() || "U"}
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-slate-900 truncate">
                   {user?.name || "User"}
@@ -141,11 +171,13 @@ const Sidebar = ({ isOpen, onClose }) => {
                 </p>
               </div>
               <button
+                type="button"
                 onClick={logout}
-                className="p-2 text-slate-400 hover:text-danger-500 hover:bg-danger-50 rounded-lg transition-colors"
+                aria-label="Sign out"
+                className="p-2 text-slate-400 hover:text-danger-500 hover:bg-danger-50 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger-500 focus-visible:ring-offset-2"
                 title="Logout"
               >
-                <LogOut className="w-5 h-5" />
+                <LogOut className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
           </div>

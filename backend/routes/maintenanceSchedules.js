@@ -1,10 +1,14 @@
 const express = require("express");
 const router = express.Router();
 const MaintenanceSchedule = require("../models/MaintenanceSchedule");
+const authenticate = require("../middleware/auth");
+const { applyCompanyFilter, getCompanyId } = require("../utils/companyScope");
+
+router.use(authenticate);
 
 router.get("/", async (req, res) => {
   try {
-    const schedules = await MaintenanceSchedule.find()
+    const schedules = await MaintenanceSchedule.find(applyCompanyFilter(req))
       .populate("equipment")
       .populate("assignedTo")
       .populate("assignedTeam")
@@ -19,7 +23,7 @@ router.get("/", async (req, res) => {
 router.get("/range", async (req, res) => {
   try {
     const { start, end } = req.query;
-    const query = {};
+    const query = applyCompanyFilter(req, {});
     if (start && end)
       query.scheduledDate = { $gte: new Date(start), $lte: new Date(end) };
     const schedules = await MaintenanceSchedule.find(query)
@@ -34,7 +38,9 @@ router.get("/range", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   try {
-    const schedule = await MaintenanceSchedule.findById(req.params.id)
+    const schedule = await MaintenanceSchedule.findOne(
+      applyCompanyFilter(req, { _id: req.params.id }),
+    )
       .populate("equipment")
       .populate("assignedTo")
       .populate("assignedTeam")
@@ -51,7 +57,11 @@ router.get("/:id", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const schedule = await MaintenanceSchedule.create(req.body);
+    const companyId = getCompanyId(req);
+    const schedule = await MaintenanceSchedule.create({
+      ...req.body,
+      company: req.body.company || companyId,
+    });
     const populated = await MaintenanceSchedule.findById(schedule._id)
       .populate("equipment")
       .populate("assignedTo");
@@ -65,10 +75,10 @@ router.put("/:id", async (req, res) => {
   try {
     if (req.body.status === "completed" && !req.body.completedDate)
       req.body.completedDate = new Date();
-    const schedule = await MaintenanceSchedule.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
+    const schedule = await MaintenanceSchedule.findOneAndUpdate(
+      applyCompanyFilter(req, { _id: req.params.id }),
+      applyCompanyFilter(req, req.body),
+      { new: true, runValidators: true },
     )
       .populate("equipment")
       .populate("assignedTo");
@@ -84,7 +94,9 @@ router.put("/:id", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   try {
-    const schedule = await MaintenanceSchedule.findByIdAndDelete(req.params.id);
+    const schedule = await MaintenanceSchedule.findOneAndDelete(
+      applyCompanyFilter(req, { _id: req.params.id }),
+    );
     if (!schedule)
       return res
         .status(404)

@@ -35,7 +35,9 @@ const workCenterSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
+
+workCenterSchema.index({ company: 1, status: 1, createdAt: -1 });
 
 module.exports = mongoose.model("WorkCenter", workCenterSchema);

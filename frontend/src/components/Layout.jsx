@@ -7,7 +7,14 @@ const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 overflow-x-hidden">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-700 focus:shadow-lg"
+      >
+        Skip to content
+      </a>
+
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -21,9 +28,16 @@ const Layout = () => {
 
       {/* Main content */}
       <div className="lg:pl-72">
-        <Header onMenuClick={() => setSidebarOpen(true)} />
+        <Header
+          onMenuClick={() => setSidebarOpen(true)}
+          isMenuOpen={sidebarOpen}
+        />
 
-        <main className="py-6 px-4 sm:px-6 lg:px-8">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="py-6 px-4 sm:px-6 lg:px-8"
+        >
           <div className="max-w-7xl mx-auto">
             <Outlet />
           </div>

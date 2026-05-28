@@ -1,0 +1,287 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 850">
+  <defs>
+    <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#0f172a"/>
+      <stop offset="100%" style="stop-color:#1e293b"/>
+    </linearGradient>
+    <linearGradient id="reactGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#61dafb"/>
+      <stop offset="100%" style="stop-color:#00d4ff"/>
+    </linearGradient>
+    <linearGradient id="nodeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#68a063"/>
+      <stop offset="100%" style="stop-color:#3c873a"/>
+    </linearGradient>
+    <linearGradient id="mongoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4db33d"/>
+      <stop offset="100%" style="stop-color:#3fa037"/>
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.2"/>
+    </filter>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="850" fill="#0f172a"/>
+  
+  <!-- Grid pattern -->
+  <defs>
+    <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
+      <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#1e293b" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="850" fill="url(#grid)" opacity="0.5"/>
+  
+  <!-- Header -->
+  <g transform="translate(0, 0)">
+    <rect width="1200" height="90" fill="url(#headerGrad)"/>
+    <text x="600" y="45" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, Arial" font-size="36" font-weight="bold">GearGuard Tech Stack</text>
+    <text x="600" y="72" text-anchor="middle" fill="#94a3b8" font-family="Segoe UI, Arial" font-size="16">Modern Full-Stack Architecture</text>
+  </g>
+  
+  <!-- Architecture Diagram -->
+  <g transform="translate(50, 120)">
+    
+    <!-- FRONTEND SECTION -->
+    <g filter="url(#shadow)">
+      <rect width="340" height="480" rx="20" fill="#1e293b" stroke="#3b82f6" stroke-width="2"/>
+      <rect width="340" height="60" rx="20" fill="#3b82f6"/>
+      <rect x="0" y="40" width="340" height="20" fill="#3b82f6"/>
+      <text x="170" y="42" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, Arial" font-size="22" font-weight="bold">🎨 FRONTEND</text>
+      
+      <!-- React -->
+      <g transform="translate(25, 80)">
+        <rect width="290" height="80" rx="12" fill="#0f172a" stroke="#61dafb" stroke-width="2"/>
+        <circle cx="50" cy="40" r="25" fill="none" stroke="#61dafb" stroke-width="2"/>
+        <circle cx="50" cy="40" r="6" fill="#61dafb"/>
+        <ellipse cx="50" cy="40" rx="25" ry="10" fill="none" stroke="#61dafb" stroke-width="1.5" transform="rotate(60, 50, 40)"/>
+        <ellipse cx="50" cy="40" rx="25" ry="10" fill="none" stroke="#61dafb" stroke-width="1.5" transform="rotate(-60, 50, 40)"/>
+        <text x="180" y="35" text-anchor="middle" fill="#61dafb" font-family="Segoe UI, Arial" font-size="18" font-weight="bold">React 18</text>
+        <text x="180" y="55" text-anchor="middle" fill="#94a3b8" font-family="Segoe UI, Arial" font-size="12">UI Components &amp; State</text>
+      </g>
+      
+      <!-- Vite -->
+      <g transform="translate(25, 175)">
+        <rect width="140" height="70" rx="12" fill="#0f172a" stroke="#646cff" stroke-width="2"/>
+        <text x="70" y="35" text-anchor="middle" fill="#a78bfa" font-family="Segoe UI, Arial" font-size="24">⚡</text>
+        <text x="70" y="55" text-anchor="middle" fill="#a78bfa" font-family="Segoe UI, Arial" font-size="14" font-weight="bold">Vite</text>
+      </g>
+      
+      <!-- Tailwind -->
+      <g transform="translate(175, 175)">
+        <rect width="140" height="70" rx="12" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+        <text x="70" y="35" text-anchor="middle" fill="#38bdf8" font-family="Segoe UI, Arial" font-size="24">🎨</text>
+        <text x="70" y="55" text-anchor="middle" fill="#38bdf8" font-family="Segoe UI, Arial" font-size="14" font-weight="bold">Tailwind CSS</text>
+      </g>
+      
+      <!-- React Router -->
+      <g transform="translate(25, 260)">
+        <rect width="140" height="70" rx="12" fill="#0f172a" stroke="#f44250" stroke-width="2"/>
+        <text x="70" y="35" text-anchor="middle" fill="#f44250" font-family="Segoe UI, Arial" font-size="24">🔀</text>
+        <text x="70" y="55" text-anchor="middle" fill="#f44250" font-family="Segoe UI, Arial" font-size="14" font-weight="bold">React Router</text>
+      </g>
+      
+      <!-- Axios -->
+      <g transform="translate(175, 260)">
+        <rect width="140" height="70" rx="12" fill="#0f172a" stroke="#5a29e4" stroke-width="2"/>
+        <text x="70" y="35" text-anchor="middle" fill="#a78bfa" font-family="Segoe UI, Arial" font-size="24">📡</text>
+        <text x="70" y="55" text-anchor="middle" fill="#a78bfa" font-family="Segoe UI, Arial" font-size="14" font-weight="bold">Axios</text>
+      </g>
+      
+      <!-- Additional libs -->
+      <g transform="translate(25, 345)">
+        <rect width="290" height="115" rx="12" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+        <text x="145" y="25" text-anchor="middle" fill="#94a3b8" font-family="Segoe UI, Arial" font-size="12" font-weight="bold">Additional Libraries</text>
+        <text x="75" y="50" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="11">• Lucide Icons</text>
+        <text x="215" y="50" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="11">• date-fns</text>
+        <text x="75" y="72" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="11">• React Hot Toast</text>
+        <text x="215" y="72" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="11">• @hello-pangea/dnd</text>
+        <text x="145" y="100" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="11">• React Context API</text>
+      </g>
+    </g>
+    
+    <!-- Connection Arrow Frontend to Backend -->
+    <g transform="translate(400, 300)">
+      <path d="M0 0 L60 0" stroke="#3b82f6" stroke-width="4" stroke-dasharray="10,5"/>
+      <polygon points="58,-8 75,0 58,8" fill="#3b82f6"/>
+      <text x="37" y="-15" text-anchor="middle" fill="#60a5fa" font-family="Segoe UI, Arial" font-size="11" font-weight="bold">REST API</text>
+      <text x="37" y="25" text-anchor="middle" fill="#60a5fa" font-family="Segoe UI, Arial" font-size="10">HTTP/JSON</text>
+    </g>
+    
+    <!-- BACKEND SECTION -->
+    <g transform="translate(430, 0)" filter="url(#shadow)">
+      <rect width="340" height="480" rx="20" fill="#1e293b" stroke="#22c55e" stroke-width="2"/>
+      <rect width="340" height="60" rx="20" fill="#22c55e"/>
+      <rect x="0" y="40" width="340" height="20" fill="#22c55e"/>
+      <text x="170" y="42" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, Arial" font-size="22" font-weight="bold">⚙️ BACKEND</text>
+      
+      <!-- Node.js -->
+      <g transform="translate(25, 80)">
+        <rect width="290" height="80" rx="12" fill="#0f172a" stroke="#68a063" stroke-width="2"/>
+        <circle cx="50" cy="40" r="22" fill="#3c873a"/>
+        <text x="50" y="47" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, Arial" font-size="14" font-weight="bold">JS</text>
+        <text x="180" y="35" text-anchor="middle" fill="#68a063" font-family="Segoe UI, Arial" font-size="18" font-weight="bold">Node.js</text>
+        <text x="180" y="55" text-anchor="middle" fill="#94a3b8" font-family="Segoe UI, Arial" font-size="12">Runtime Environment</text>
+      </g>
+      
+      <!-- Express -->
+      <g transform="translate(25, 175)">
+        <rect width="140" height="70" rx="12" fill="#0f172a" stroke="#ffffff" stroke-width="2"/>
+        <text x="70" y="35" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, Arial" font-size="24">🚀</text>
+        <text x="70" y="55" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, Arial" font-size="14" font-weight="bold">Express.js</text>
+      </g>
+      
+      <!-- JWT -->
+      <g transform="translate(175, 175)">
+        <rect width="140" height="70" rx="12" fill="#0f172a" stroke="#fb015b" stroke-width="2"/>
+        <text x="70" y="35" text-anchor="middle" fill="#fb015b" font-family="Segoe UI, Arial" font-size="24">🔐</text>
+        <text x="70" y="55" text-anchor="middle" fill="#fb015b" font-family="Segoe UI, Arial" font-size="14" font-weight="bold">JWT Auth</text>
+      </g>
+      
+      <!-- Mongoose -->
+      <g transform="translate(25, 260)">
+        <rect width="140" height="70" rx="12" fill="#0f172a" stroke="#880015" stroke-width="2"/>
+        <text x="70" y="35" text-anchor="middle" fill="#a52a2a" font-family="Segoe UI, Arial" font-size="24">🦊</text>
+        <text x="70" y="55" text-anchor="middle" fill="#a52a2a" font-family="Segoe UI, Arial" font-size="14" font-weight="bold">Mongoose</text>
+      </g>
+      
+      <!-- bcrypt -->
+      <g transform="translate(175, 260)">
+        <rect width="140" height="70" rx="12" fill="#0f172a" stroke="#fbbf24" stroke-width="2"/>
+        <text x="70" y="35" text-anchor="middle" fill="#fbbf24" font-family="Segoe UI, Arial" font-size="24">🔒</text>
+        <text x="70" y="55" text-anchor="middle" fill="#fbbf24" font-family="Segoe UI, Arial" font-size="14" font-weight="bold">bcrypt</text>
+      </g>
+      
+      <!-- API Features -->
+      <g transform="translate(25, 345)">
+        <rect width="290" height="115" rx="12" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+        <text x="145" y="25" text-anchor="middle" fill="#94a3b8" font-family="Segoe UI, Arial" font-size="12" font-weight="bold">API Features</text>
+        <text x="75" y="50" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="11">• RESTful Routes</text>
+        <text x="215" y="50" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="11">• CORS Enabled</text>
+        <text x="75" y="72" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="11">• Error Handling</text>
+        <text x="215" y="72" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="11">• Validation</text>
+        <text x="145" y="100" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="11">• dotenv Configuration</text>
+      </g>
+    </g>
+    
+    <!-- Connection Arrow Backend to Database -->
+    <g transform="translate(780, 300)">
+      <path d="M0 0 L60 0" stroke="#22c55e" stroke-width="4" stroke-dasharray="10,5"/>
+      <polygon points="58,-8 75,0 58,8" fill="#22c55e"/>
+      <text x="37" y="-15" text-anchor="middle" fill="#4ade80" font-family="Segoe UI, Arial" font-size="11" font-weight="bold">Mongoose</text>
+      <text x="37" y="25" text-anchor="middle" fill="#4ade80" font-family="Segoe UI, Arial" font-size="10">ODM</text>
+    </g>
+    
+    <!-- DATABASE SECTION -->
+    <g transform="translate(810, 0)" filter="url(#shadow)">
+      <rect width="280" height="480" rx="20" fill="#1e293b" stroke="#4db33d" stroke-width="2"/>
+      <rect width="280" height="60" rx="20" fill="#4db33d"/>
+      <rect x="0" y="40" width="280" height="20" fill="#4db33d"/>
+      <text x="140" y="42" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, Arial" font-size="22" font-weight="bold">🗄️ DATABASE</text>
+      
+      <!-- MongoDB -->
+      <g transform="translate(25, 80)">
+        <rect width="230" height="90" rx="12" fill="#0f172a" stroke="#4db33d" stroke-width="2"/>
+        <text x="115" y="40" text-anchor="middle" fill="#4db33d" font-family="Segoe UI, Arial" font-size="32">🍃</text>
+        <text x="115" y="65" text-anchor="middle" fill="#4db33d" font-family="Segoe UI, Arial" font-size="18" font-weight="bold">MongoDB</text>
+        <text x="115" y="82" text-anchor="middle" fill="#94a3b8" font-family="Segoe UI, Arial" font-size="11">NoSQL Database</text>
+      </g>
+      
+      <!-- Collections -->
+      <g transform="translate(25, 185)">
+        <rect width="230" height="275" rx="12" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+        <text x="115" y="25" text-anchor="middle" fill="#4ade80" font-family="Segoe UI, Arial" font-size="14" font-weight="bold">📁 Collections</text>
+        
+        <text x="60" y="55" text-anchor="middle" fill="#94a3b8" font-family="Segoe UI, Arial" font-size="11">• Users</text>
+        <text x="170" y="55" text-anchor="middle" fill="#94a3b8" font-family="Segoe UI, Arial" font-size="11">• Companies</text>
+        
+        <text x="60" y="80" text-anchor="middle" fill="#94a3b8" font-family="Segoe UI, Arial" font-size="11">• Equipment</text>
+        <text x="170" y="80" text-anchor="middle" fill="#94a3b8" font-family="Segoe UI, Arial" font-size="11">• Locations</text>
+        
+        <text x="60" y="105" text-anchor="middle" fill="#94a3b8" font-family="Segoe UI, Arial" font-size="11">• Teams</text>
+        <text x="170" y="105" text-anchor="middle" fill="#94a3b8" font-family="Segoe UI, Arial" font-size="11">• Employees</text>
+        
+        <text x="60" y="130" text-anchor="middle" fill="#94a3b8" font-family="Segoe UI, Arial" font-size="11">• Work Orders</text>
+        <text x="170" y="130" text-anchor="middle" fill="#94a3b8" font-family="Segoe UI, Arial" font-size="11">• Tasks</text>
+        
+        <text x="60" y="155" text-anchor="middle" fill="#94a3b8" font-family="Segoe UI, Arial" font-size="11">• Maintenance</text>
+        <text x="170" y="155" text-anchor="middle" fill="#94a3b8" font-family="Segoe UI, Arial" font-size="11">• Work Centers</text>
+        
+        <text x="115" y="180" text-anchor="middle" fill="#94a3b8" font-family="Segoe UI, Arial" font-size="11">• Notifications</text>
+        
+        <line x1="20" y1="200" x2="210" y2="200" stroke="#334155" stroke-width="1"/>
+        
+        <text x="115" y="225" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="10" font-weight="bold">Features</text>
+        <text x="115" y="245" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="10">• Schema Validation</text>
+        <text x="115" y="262" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="10">• Indexing</text>
+      </g>
+    </g>
+  </g>
+  
+  <!-- KEY FEATURES SECTION -->
+  <g transform="translate(50, 630)">
+    <rect width="1100" height="180" rx="16" fill="#1e293b" stroke="#475569" stroke-width="1" filter="url(#shadow)"/>
+    <text x="550" y="35" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, Arial" font-size="20" font-weight="bold">✨ Key Features</text>
+    
+    <!-- Feature Cards -->
+    <g transform="translate(30, 55)">
+      <rect width="160" height="100" rx="10" fill="#0f172a" stroke="#3b82f6" stroke-width="1"/>
+      <text x="80" y="35" text-anchor="middle" fill="#3b82f6" font-family="Segoe UI, Arial" font-size="28">📋</text>
+      <text x="80" y="60" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, Arial" font-size="12" font-weight="bold">Kanban Board</text>
+      <text x="80" y="78" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="10">Drag &amp; Drop</text>
+      <text x="80" y="92" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="10">Workflow</text>
+    </g>
+    
+    <g transform="translate(210, 55)">
+      <rect width="160" height="100" rx="10" fill="#0f172a" stroke="#22c55e" stroke-width="1"/>
+      <text x="80" y="35" text-anchor="middle" fill="#22c55e" font-family="Segoe UI, Arial" font-size="28">🔐</text>
+      <text x="80" y="60" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, Arial" font-size="12" font-weight="bold">Authentication</text>
+      <text x="80" y="78" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="10">JWT Tokens</text>
+      <text x="80" y="92" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="10">Role-based Access</text>
+    </g>
+    
+    <g transform="translate(390, 55)">
+      <rect width="160" height="100" rx="10" fill="#0f172a" stroke="#f97316" stroke-width="1"/>
+      <text x="80" y="35" text-anchor="middle" fill="#f97316" font-family="Segoe UI, Arial" font-size="28">📊</text>
+      <text x="80" y="60" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, Arial" font-size="12" font-weight="bold">Dashboard</text>
+      <text x="80" y="78" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="10">Analytics &amp;</text>
+      <text x="80" y="92" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="10">Statistics</text>
+    </g>
+    
+    <g transform="translate(570, 55)">
+      <rect width="160" height="100" rx="10" fill="#0f172a" stroke="#8b5cf6" stroke-width="1"/>
+      <text x="80" y="35" text-anchor="middle" fill="#8b5cf6" font-family="Segoe UI, Arial" font-size="28">🔔</text>
+      <text x="80" y="60" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, Arial" font-size="12" font-weight="bold">Notifications</text>
+      <text x="80" y="78" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="10">Real-time</text>
+      <text x="80" y="92" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="10">Alerts</text>
+    </g>
+    
+    <g transform="translate(750, 55)">
+      <rect width="160" height="100" rx="10" fill="#0f172a" stroke="#ec4899" stroke-width="1"/>
+      <text x="80" y="35" text-anchor="middle" fill="#ec4899" font-family="Segoe UI, Arial" font-size="28">📱</text>
+      <text x="80" y="60" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, Arial" font-size="12" font-weight="bold">Responsive</text>
+      <text x="80" y="78" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="10">Mobile-First</text>
+      <text x="80" y="92" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="10">Design</text>
+    </g>
+    
+    <g transform="translate(930, 55)">
+      <rect width="140" height="100" rx="10" fill="#0f172a" stroke="#14b8a6" stroke-width="1"/>
+      <text x="70" y="35" text-anchor="middle" fill="#14b8a6" font-family="Segoe UI, Arial" font-size="28">⚙️</text>
+      <text x="70" y="60" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, Arial" font-size="12" font-weight="bold">Settings</text>
+      <text x="70" y="78" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="10">Profile &amp;</text>
+      <text x="70" y="92" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="10">Preferences</text>
+    </g>
+  </g>
+  
+  <!-- Footer -->
+  <g transform="translate(0, 820)">
+    <text x="600" y="20" text-anchor="middle" fill="#64748b" font-family="Segoe UI, Arial" font-size="12">GearGuard Maintenance Tracker © 2025 | Built with Modern Web Technologies</text>
+  </g>
+</svg>

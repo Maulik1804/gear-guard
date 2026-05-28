@@ -1,9 +1,16 @@
 const express = require("express");
 const router = express.Router();
 const Company = require("../models/Company");
+const authenticate = require("../middleware/auth");
+const { getCompanyId } = require("../utils/companyScope");
+
+router.use(authenticate);
 
 router.get("/", async (req, res) => {
   try {
+    if (req.user?.role !== "admin") {
+      return res.status(403).json({ message: "Access denied" });
+    }
     const companies = await Company.find().sort({ createdAt: -1 });
     res.json(companies);
   } catch (error) {
@@ -13,6 +20,14 @@ router.get("/", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   try {
+    const companyId = getCompanyId(req);
+    if (
+      companyId &&
+      companyId !== req.params.id &&
+      req.user?.role !== "admin"
+    ) {
+      return res.status(403).json({ message: "Access denied" });
+    }
     const company = await Company.findById(req.params.id);
     if (!company) return res.status(404).json({ message: "Company not found" });
     res.json(company);
@@ -23,6 +38,9 @@ router.get("/:id", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
+    if (req.user?.role !== "admin") {
+      return res.status(403).json({ message: "Access denied" });
+    }
     const company = await Company.create(req.body);
     res.status(201).json(company);
   } catch (error) {
@@ -32,6 +50,14 @@ router.post("/", async (req, res) => {
 
 router.put("/:id", async (req, res) => {
   try {
+    const companyId = getCompanyId(req);
+    if (
+      companyId &&
+      companyId !== req.params.id &&
+      req.user?.role !== "admin"
+    ) {
+      return res.status(403).json({ message: "Access denied" });
+    }
     const company = await Company.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
@@ -45,6 +71,14 @@ router.put("/:id", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   try {
+    const companyId = getCompanyId(req);
+    if (
+      companyId &&
+      companyId !== req.params.id &&
+      req.user?.role !== "admin"
+    ) {
+      return res.status(403).json({ message: "Access denied" });
+    }
     const company = await Company.findByIdAndDelete(req.params.id);
     if (!company) return res.status(404).json({ message: "Company not found" });
     res.json({ message: "Company deleted successfully" });

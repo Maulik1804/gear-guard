@@ -39,8 +39,11 @@ const employeeSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
+
+employeeSchema.index({ company: 1, status: 1, createdAt: -1 });
+employeeSchema.index({ company: 1, department: 1 });
 
 employeeSchema.set("toJSON", { virtuals: true });
 employeeSchema.set("toObject", { virtuals: true });

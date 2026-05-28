@@ -1,39 +1,47 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
+import { usersApi, companiesApi } from "../services/api";
 import {
   User,
   Building2,
   Bell,
   Shield,
-  Palette,
-  Globe,
   Save,
   ChevronRight,
+  Loader2,
+  Camera,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
 const Settings = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState("profile");
+  const [loading, setLoading] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savingCompany, setSavingCompany] = useState(false);
+  const [savingNotifications, setSavingNotifications] = useState(false);
+  const [savingSecurity, setSavingSecurity] = useState(false);
+  const [avatar, setAvatar] = useState(null);
+  const fileInputRef = useRef(null);
 
   const [profileData, setProfileData] = useState({
-    first_name: user?.first_name || "Demo",
-    last_name: user?.last_name || "User",
-    email: user?.email || "demo@gearguard.com",
-    phone: user?.phone || "",
-    job_title: user?.job_title || "Administrator",
+    name: "",
+    email: "",
+    phone: "",
+    job_title: "",
     timezone: "America/New_York",
   });
 
   const [companyData, setCompanyData] = useState({
-    name: user?.company_name || "Demo Company",
-    address: "123 Industrial Way",
-    city: "Detroit",
-    state: "MI",
-    country: "USA",
-    phone: "555-0000",
-    email: "info@company.com",
-    website: "www.company.com",
+    _id: "",
+    name: "",
+    address: "",
+    city: "",
+    state: "",
+    country: "",
+    phone: "",
+    email: "",
+    website: "",
   });
 
   const [notificationSettings, setNotificationSettings] = useState({
@@ -54,24 +62,270 @@ const Settings = () => {
     session_timeout: "30",
   });
 
-  const [appearanceSettings, setAppearanceSettings] = useState({
-    theme: "light",
-    sidebar_collapsed: false,
-    compact_mode: false,
-    date_format: "MM/DD/YYYY",
-    time_format: "12h",
-  });
+  // Helper to check if user ID is a valid MongoDB ObjectId
+  const isValidObjectId = (id) => {
+    return id && /^[a-fA-F0-9]{24}$/.test(String(id));
+  };
+
+  // Load avatar from localStorage on mount
+  useEffect(() => {
+    const savedAvatar = localStorage.getItem("gearguard_avatar");
+    if (savedAvatar) {
+      setAvatar(savedAvatar);
+    }
+  }, []);
+
+  // Handle avatar file selection
+  const handleAvatarChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    // Validate file size (2MB max)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image must be less than 2MB");
+      return;
+    }
+
+    // Convert to base64 and save
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result;
+      setAvatar(base64);
+      localStorage.setItem("gearguard_avatar", base64);
+
+      // Update user context with avatar
+      if (updateUser) {
+        updateUser({ ...user, avatar: base64 });
+      }
+
+      toast.success("Avatar updated successfully");
+    };
+    reader.onerror = () => {
+      toast.error("Failed to read image file");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Load user and company data
+  useEffect(() => {
+    const loadData = async () => {
+      if (!user?.id) return;
+
+      // If user ID is not a valid MongoDB ObjectId (demo mode), use local data
+      if (!isValidObjectId(user.id)) {
+        setProfileData({
+          name: user.name || "",
+          email: user.email || "",
+          phone: "",
+          job_title: "",
+          timezone: "America/New_York",
+        });
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        // Load user data
+        const userRes = await usersApi.getById(user.id);
+        const userData = userRes.data;
+
+        setProfileData({
+          name: userData.name || "",
+          email: userData.email || "",
+          phone: userData.phone || "",
+          job_title: userData.job_title || "",
+          timezone: userData.timezone || "America/New_York",
+        });
+
+        if (userData.notification_settings) {
+          setNotificationSettings(userData.notification_settings);
+        }
+
+        setSecuritySettings((prev) => ({
+          ...prev,
+          two_factor: userData.two_factor_enabled || false,
+          session_timeout: String(userData.session_timeout || 30),
+        }));
+
+        // Load company data if user has a company
+        if (userData.company) {
+          const companyId =
+            typeof userData.company === "object"
+              ? userData.company._id
+              : userData.company;
+          const companyRes = await companiesApi.getById(companyId);
+          setCompanyData(companyRes.data);
+        }
+      } catch (error) {
+        console.error("Failed to load settings data:", error);
+        // Set default values from user context if API fails
+        setProfileData({
+          name: user.name || "",
+          email: user.email || "",
+          phone: "",
+          job_title: "",
+          timezone: "America/New_York",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [user?.id]);
 
   const tabs = [
     { id: "profile", label: "Profile", icon: User },
     { id: "company", label: "Company", icon: Building2 },
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "security", label: "Security", icon: Shield },
-    { id: "appearance", label: "Appearance", icon: Palette },
   ];
 
-  const handleSave = (section) => {
-    toast.success(`${section} settings saved successfully`);
+  const handleSaveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      // If valid MongoDB ObjectId, save to API
+      if (isValidObjectId(user.id)) {
+        await usersApi.update(user.id, {
+          name: profileData.name,
+          email: profileData.email,
+          phone: profileData.phone,
+          job_title: profileData.job_title,
+          timezone: profileData.timezone,
+        });
+      }
+
+      // Update the auth context with new user data (works for both demo and real mode)
+      if (updateUser) {
+        updateUser({
+          ...user,
+          name: profileData.name,
+          email: profileData.email,
+        });
+      }
+
+      toast.success("Profile settings saved successfully");
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Failed to save profile settings"
+      );
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleSaveCompany = async () => {
+    if (!companyData._id || !isValidObjectId(companyData._id)) {
+      // Demo mode - just show success
+      toast.success("Company settings saved successfully");
+      return;
+    }
+
+    setSavingCompany(true);
+    try {
+      await companiesApi.update(companyData._id, {
+        name: companyData.name,
+        address: companyData.address,
+        city: companyData.city,
+        state: companyData.state,
+        country: companyData.country,
+        phone: companyData.phone,
+        email: companyData.email,
+        website: companyData.website,
+      });
+      toast.success("Company settings saved successfully");
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Failed to save company settings"
+      );
+    } finally {
+      setSavingCompany(false);
+    }
+  };
+
+  const handleSaveNotifications = async () => {
+    setSavingNotifications(true);
+    try {
+      if (isValidObjectId(user.id)) {
+        await usersApi.update(user.id, {
+          notification_settings: notificationSettings,
+        });
+      }
+      toast.success("Notification settings saved successfully");
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Failed to save notification settings"
+      );
+    } finally {
+      setSavingNotifications(false);
+    }
+  };
+
+  const handleSaveSecurity = async () => {
+    setSavingSecurity(true);
+    try {
+      if (isValidObjectId(user.id)) {
+        await usersApi.update(user.id, {
+          two_factor_enabled: securitySettings.two_factor,
+          session_timeout: parseInt(securitySettings.session_timeout),
+        });
+      }
+      toast.success("Security settings saved successfully");
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Failed to save security settings"
+      );
+    } finally {
+      setSavingSecurity(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!securitySettings.current_password || !securitySettings.new_password) {
+      toast.error("Please fill in all password fields");
+      return;
+    }
+
+    if (securitySettings.new_password !== securitySettings.confirm_password) {
+      toast.error("New passwords do not match");
+      return;
+    }
+
+    if (securitySettings.new_password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    if (!isValidObjectId(user.id)) {
+      toast.error("Password change is not available in demo mode");
+      return;
+    }
+
+    setSavingSecurity(true);
+    try {
+      await usersApi.changePassword(user.id, {
+        current_password: securitySettings.current_password,
+        new_password: securitySettings.new_password,
+      });
+      toast.success("Password changed successfully");
+      setSecuritySettings((prev) => ({
+        ...prev,
+        current_password: "",
+        new_password: "",
+        confirm_password: "",
+      }));
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to change password");
+    } finally {
+      setSavingSecurity(false);
+    }
   };
 
   const renderProfileSettings = () => (
@@ -86,41 +340,55 @@ const Settings = () => {
       </div>
 
       <div className="flex items-center gap-6">
-        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-2xl font-semibold">
-          {profileData.first_name[0]}
-          {profileData.last_name[0]}
+        <div className="relative group">
+          {avatar ? (
+            <img
+              src={avatar}
+              alt="Avatar"
+              className="w-20 h-20 rounded-full object-cover"
+            />
+          ) : (
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-2xl font-semibold">
+              {profileData.name?.charAt(0)?.toUpperCase() || "U"}
+            </div>
+          )}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+          >
+            <Camera className="w-6 h-6 text-white" />
+          </button>
         </div>
         <div>
-          <button className="btn-secondary text-sm">Change Avatar</button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleAvatarChange}
+            accept="image/*"
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="btn-secondary text-sm"
+          >
+            Change Avatar
+          </button>
           <p className="text-xs text-slate-400 mt-2">
             JPG, PNG or GIF. Max 2MB.
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        <div>
-          <label className="label">First Name</label>
-          <input
-            type="text"
-            value={profileData.first_name}
-            onChange={(e) =>
-              setProfileData({ ...profileData, first_name: e.target.value })
-            }
-            className="input"
-          />
-        </div>
-        <div>
-          <label className="label">Last Name</label>
-          <input
-            type="text"
-            value={profileData.last_name}
-            onChange={(e) =>
-              setProfileData({ ...profileData, last_name: e.target.value })
-            }
-            className="input"
-          />
-        </div>
+      <div>
+        <label className="label">Full Name</label>
+        <input
+          type="text"
+          value={profileData.name}
+          onChange={(e) =>
+            setProfileData({ ...profileData, name: e.target.value })
+          }
+          className="input"
+        />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -180,9 +448,17 @@ const Settings = () => {
       </div>
 
       <div className="pt-4 border-t border-slate-200">
-        <button onClick={() => handleSave("Profile")} className="btn-primary">
-          <Save className="w-4 h-4" />
-          Save Changes
+        <button
+          onClick={handleSaveProfile}
+          disabled={savingProfile}
+          className="btn-primary"
+        >
+          {savingProfile ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Save className="w-4 h-4" />
+          )}
+          {savingProfile ? "Saving..." : "Save Changes"}
         </button>
       </div>
     </div>
@@ -296,9 +572,17 @@ const Settings = () => {
       </div>
 
       <div className="pt-4 border-t border-slate-200">
-        <button onClick={() => handleSave("Company")} className="btn-primary">
-          <Save className="w-4 h-4" />
-          Save Changes
+        <button
+          onClick={handleSaveCompany}
+          disabled={savingCompany}
+          className="btn-primary"
+        >
+          {savingCompany ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Save className="w-4 h-4" />
+          )}
+          {savingCompany ? "Saving..." : "Save Changes"}
         </button>
       </div>
     </div>
@@ -470,11 +754,16 @@ const Settings = () => {
 
       <div className="pt-4 border-t border-slate-200">
         <button
-          onClick={() => handleSave("Notification")}
+          onClick={handleSaveNotifications}
+          disabled={savingNotifications}
           className="btn-primary"
         >
-          <Save className="w-4 h-4" />
-          Save Changes
+          {savingNotifications ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Save className="w-4 h-4" />
+          )}
+          {savingNotifications ? "Saving..." : "Save Changes"}
         </button>
       </div>
     </div>
@@ -539,7 +828,13 @@ const Settings = () => {
               placeholder="••••••••"
             />
           </div>
-          <button className="btn-secondary">Update Password</button>
+          <button
+            onClick={handleChangePassword}
+            disabled={savingSecurity}
+            className="btn-secondary"
+          >
+            {savingSecurity ? "Updating..." : "Update Password"}
+          </button>
         </div>
       </div>
 
@@ -588,144 +883,31 @@ const Settings = () => {
       </div>
 
       <div className="pt-4 border-t border-slate-200">
-        <button onClick={() => handleSave("Security")} className="btn-primary">
-          <Save className="w-4 h-4" />
-          Save Changes
-        </button>
-      </div>
-    </div>
-  );
-
-  const renderAppearanceSettings = () => (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-slate-900">Appearance</h3>
-        <p className="text-sm text-slate-500 mt-1">
-          Customize how the application looks
-        </p>
-      </div>
-
-      <div>
-        <label className="label">Theme</label>
-        <div className="grid grid-cols-3 gap-4 mt-2">
-          {["light", "dark", "system"].map((theme) => (
-            <button
-              key={theme}
-              onClick={() =>
-                setAppearanceSettings({ ...appearanceSettings, theme })
-              }
-              className={`p-4 rounded-xl border-2 transition-all ${
-                appearanceSettings.theme === theme
-                  ? "border-primary-500 bg-primary-50"
-                  : "border-slate-200 hover:border-slate-300"
-              }`}
-            >
-              <div
-                className={`w-full h-12 rounded-lg mb-3 ${
-                  theme === "light"
-                    ? "bg-white border border-slate-200"
-                    : theme === "dark"
-                    ? "bg-slate-800"
-                    : "bg-gradient-to-r from-white to-slate-800"
-                }`}
-              />
-              <p className="text-sm font-medium text-slate-700 capitalize">
-                {theme}
-              </p>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <label className="flex items-center justify-between">
-          <div>
-            <p className="font-medium text-slate-700">Compact Mode</p>
-            <p className="text-sm text-slate-500">Reduce padding and spacing</p>
-          </div>
-          <input
-            type="checkbox"
-            checked={appearanceSettings.compact_mode}
-            onChange={(e) =>
-              setAppearanceSettings({
-                ...appearanceSettings,
-                compact_mode: e.target.checked,
-              })
-            }
-            className="w-5 h-5 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
-          />
-        </label>
-
-        <label className="flex items-center justify-between">
-          <div>
-            <p className="font-medium text-slate-700">Collapse Sidebar</p>
-            <p className="text-sm text-slate-500">
-              Show only icons in the sidebar
-            </p>
-          </div>
-          <input
-            type="checkbox"
-            checked={appearanceSettings.sidebar_collapsed}
-            onChange={(e) =>
-              setAppearanceSettings({
-                ...appearanceSettings,
-                sidebar_collapsed: e.target.checked,
-              })
-            }
-            className="w-5 h-5 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
-          />
-        </label>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        <div>
-          <label className="label">Date Format</label>
-          <select
-            value={appearanceSettings.date_format}
-            onChange={(e) =>
-              setAppearanceSettings({
-                ...appearanceSettings,
-                date_format: e.target.value,
-              })
-            }
-            className="select"
-          >
-            <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-            <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-            <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-          </select>
-        </div>
-        <div>
-          <label className="label">Time Format</label>
-          <select
-            value={appearanceSettings.time_format}
-            onChange={(e) =>
-              setAppearanceSettings({
-                ...appearanceSettings,
-                time_format: e.target.value,
-              })
-            }
-            className="select"
-          >
-            <option value="12h">12 Hour (AM/PM)</option>
-            <option value="24h">24 Hour</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="pt-4 border-t border-slate-200">
         <button
-          onClick={() => handleSave("Appearance")}
+          onClick={handleSaveSecurity}
+          disabled={savingSecurity}
           className="btn-primary"
         >
-          <Save className="w-4 h-4" />
-          Save Changes
+          {savingSecurity ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Save className="w-4 h-4" />
+          )}
+          {savingSecurity ? "Saving..." : "Save Changes"}
         </button>
       </div>
     </div>
   );
 
   const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+        </div>
+      );
+    }
+
     switch (activeTab) {
       case "profile":
         return renderProfileSettings();
@@ -735,8 +917,6 @@ const Settings = () => {
         return renderNotificationSettings();
       case "security":
         return renderSecuritySettings();
-      case "appearance":
-        return renderAppearanceSettings();
       default:
         return renderProfileSettings();
     }

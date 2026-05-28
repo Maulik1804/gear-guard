@@ -74,8 +74,11 @@ const workOrderSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
+
+workOrderSchema.index({ company: 1, status: 1, createdAt: -1 });
+workOrderSchema.index({ company: 1, dueDate: 1 });
 
 // Auto-generate order number
 workOrderSchema.pre("save", async function (next) {

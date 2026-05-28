@@ -53,7 +53,7 @@ const Signup = () => {
         formData.name,
         formData.email,
         formData.password,
-        formData.companyName
+        formData.companyName,
       );
       if (result.success) {
         navigate("/dashboard");
@@ -203,22 +203,37 @@ const Signup = () => {
 
               {/* Name */}
               <div>
-                <label className="label">Full Name</label>
+                <label htmlFor="signup-name" className="label">
+                  Full Name
+                </label>
                 <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <User
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"
+                    aria-hidden="true"
+                  />
                   <input
                     type="text"
                     name="name"
+                    id="signup-name"
+                    autoComplete="name"
                     value={formData.name}
                     onChange={handleChange}
+                    aria-invalid={Boolean(errors.name)}
+                    aria-describedby={
+                      errors.name ? "signup-name-error" : undefined
+                    }
                     className={`input pl-12 ${
                       errors.name ? "input-error" : ""
-                    }`}
-                    placeholder="Enter your full name"
+                    } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}
+                    placeholder="Enter your full name…"
                   />
                 </div>
                 {errors.name && (
-                  <p className="mt-1.5 text-sm text-danger-600">
+                  <p
+                    id="signup-name-error"
+                    className="mt-1.5 text-sm text-danger-600"
+                    aria-live="polite"
+                  >
                     {errors.name}
                   </p>
                 )}
@@ -226,22 +241,38 @@ const Signup = () => {
 
               {/* Email */}
               <div>
-                <label className="label">Email Address</label>
+                <label htmlFor="signup-email" className="label">
+                  Email Address
+                </label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <Mail
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"
+                    aria-hidden="true"
+                  />
                   <input
                     type="email"
                     name="email"
+                    id="signup-email"
+                    autoComplete="email"
+                    spellCheck={false}
                     value={formData.email}
                     onChange={handleChange}
+                    aria-invalid={Boolean(errors.email)}
+                    aria-describedby={
+                      errors.email ? "signup-email-error" : undefined
+                    }
                     className={`input pl-12 ${
                       errors.email ? "input-error" : ""
-                    }`}
-                    placeholder="Enter your email"
+                    } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}
+                    placeholder="Enter your email…"
                   />
                 </div>
                 {errors.email && (
-                  <p className="mt-1.5 text-sm text-danger-600">
+                  <p
+                    id="signup-email-error"
+                    className="mt-1.5 text-sm text-danger-600"
+                    aria-live="polite"
+                  >
                     {errors.email}
                   </p>
                 )}
@@ -249,22 +280,37 @@ const Signup = () => {
 
               {/* Company Name */}
               <div>
-                <label className="label">Company Name</label>
+                <label htmlFor="signup-company-name" className="label">
+                  Company Name
+                </label>
                 <div className="relative">
-                  <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <Building2
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"
+                    aria-hidden="true"
+                  />
                   <input
                     type="text"
                     name="companyName"
+                    id="signup-company-name"
+                    autoComplete="organization"
                     value={formData.companyName}
                     onChange={handleChange}
+                    aria-invalid={Boolean(errors.companyName)}
+                    aria-describedby={
+                      errors.companyName ? "signup-company-error" : undefined
+                    }
                     className={`input pl-12 ${
                       errors.companyName ? "input-error" : ""
-                    }`}
+                    } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}
                     placeholder="Enter your company name"
                   />
                 </div>
                 {errors.companyName && (
-                  <p className="mt-1.5 text-sm text-danger-600">
+                  <p
+                    id="signup-company-error"
+                    className="mt-1.5 text-sm text-danger-600"
+                    aria-live="polite"
+                  >
                     {errors.companyName}
                   </p>
                 )}
@@ -272,33 +318,51 @@ const Signup = () => {
 
               {/* Password */}
               <div>
-                <label className="label">Password</label>
+                <label htmlFor="signup-password" className="label">
+                  Password
+                </label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <Lock
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"
+                    aria-hidden="true"
+                  />
                   <input
                     type={showPassword ? "text" : "password"}
                     name="password"
+                    id="signup-password"
+                    autoComplete="new-password"
                     value={formData.password}
                     onChange={handleChange}
+                    aria-invalid={Boolean(errors.password)}
+                    aria-describedby={
+                      errors.password ? "signup-password-error" : undefined
+                    }
                     className={`input pl-12 pr-12 ${
                       errors.password ? "input-error" : ""
-                    }`}
-                    placeholder="Create a password"
+                    } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}
+                    placeholder="Create a password…"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 rounded"
                   >
                     {showPassword ? (
-                      <EyeOff className="w-5 h-5" />
+                      <EyeOff className="w-5 h-5" aria-hidden="true" />
                     ) : (
-                      <Eye className="w-5 h-5" />
+                      <Eye className="w-5 h-5" aria-hidden="true" />
                     )}
                   </button>
                 </div>
                 {errors.password && (
-                  <p className="mt-1.5 text-sm text-danger-600">
+                  <p
+                    id="signup-password-error"
+                    className="mt-1.5 text-sm text-danger-600"
+                    aria-live="polite"
+                  >
                     {errors.password}
                   </p>
                 )}
@@ -306,33 +370,55 @@ const Signup = () => {
 
               {/* Confirm Password */}
               <div>
-                <label className="label">Confirm Password</label>
+                <label htmlFor="signup-confirm-password" className="label">
+                  Confirm Password
+                </label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <Lock
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"
+                    aria-hidden="true"
+                  />
                   <input
                     type={showConfirmPassword ? "text" : "password"}
                     name="confirmPassword"
+                    id="signup-confirm-password"
+                    autoComplete="new-password"
                     value={formData.confirmPassword}
                     onChange={handleChange}
+                    aria-invalid={Boolean(errors.confirmPassword)}
+                    aria-describedby={
+                      errors.confirmPassword
+                        ? "signup-confirm-password-error"
+                        : undefined
+                    }
                     className={`input pl-12 pr-12 ${
                       errors.confirmPassword ? "input-error" : ""
-                    }`}
-                    placeholder="Confirm your password"
+                    } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}
+                    placeholder="Confirm your password…"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    aria-label={
+                      showConfirmPassword
+                        ? "Hide confirm password"
+                        : "Show confirm password"
+                    }
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 rounded"
                   >
                     {showConfirmPassword ? (
-                      <EyeOff className="w-5 h-5" />
+                      <EyeOff className="w-5 h-5" aria-hidden="true" />
                     ) : (
-                      <Eye className="w-5 h-5" />
+                      <Eye className="w-5 h-5" aria-hidden="true" />
                     )}
                   </button>
                 </div>
                 {errors.confirmPassword && (
-                  <p className="mt-1.5 text-sm text-danger-600">
+                  <p
+                    id="signup-confirm-password-error"
+                    className="mt-1.5 text-sm text-danger-600"
+                    aria-live="polite"
+                  >
                     {errors.confirmPassword}
                   </p>
                 )}
@@ -361,12 +447,12 @@ const Signup = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="btn-primary w-full py-3 text-base"
+                className="btn-primary w-full py-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Creating account...
+                    Creating account…
                   </span>
                 ) : (
                   "Create Account"

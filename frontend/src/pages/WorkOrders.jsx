@@ -61,7 +61,8 @@ const WorkOrders = () => {
 
       const data = workOrdersRes.data.map((wo) => ({
         id: wo._id,
-        work_order_number: wo.workOrderNumber || wo.work_order_number || "",
+        work_order_number:
+          wo.orderNumber || wo.workOrderNumber || wo.work_order_number || "",
         equipment_id: wo.equipment?._id || "",
         equipment_name: wo.equipment?.name || wo.equipment_name || "",
         work_center_id: wo.workCenter?._id || "",
@@ -70,15 +71,15 @@ const WorkOrders = () => {
         cost_per_hour: wo.costPerHour || wo.cost_per_hour || 0,
         capacity_task_estimate:
           wo.estimatedHours || wo.capacity_task_estimate || 0,
-        from_date: wo.startDate
-          ? new Date(wo.startDate).toISOString().split("T")[0]
+        from_date: wo.scheduledDate
+          ? new Date(wo.scheduledDate).toISOString().split("T")[0]
           : "",
-        to_date: wo.endDate
-          ? new Date(wo.endDate).toISOString().split("T")[0]
+        to_date: wo.dueDate
+          ? new Date(wo.dueDate).toISOString().split("T")[0]
           : "",
         status: wo.status || "draft",
-        tag: wo.tag || "",
-        alternative_information: wo.notes || "",
+        tag: wo.type || wo.tag || "",
+        alternative_information: wo.description || wo.notes || "",
       }));
       setWorkOrders(data);
     } catch (error) {
@@ -174,6 +175,14 @@ const WorkOrders = () => {
     if (!formData.from_date) {
       errors.from_date = "Start date is required";
     }
+    // Validate end date is not before start date
+    if (formData.from_date && formData.to_date) {
+      const startDate = new Date(formData.from_date);
+      const endDate = new Date(formData.to_date);
+      if (endDate < startDate) {
+        errors.to_date = "End date cannot be before start date";
+      }
+    }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -199,8 +208,12 @@ const WorkOrders = () => {
       workCenter: formData.work_center_id || undefined,
       cost: parseFloat(formData.cost) || 0,
       estimatedHours: parseFloat(formData.capacity_task_estimate) || 0,
-      scheduledDate: formData.from_date,
-      dueDate: formData.to_date,
+      scheduledDate: formData.from_date
+        ? new Date(formData.from_date).toISOString()
+        : undefined,
+      dueDate: formData.to_date
+        ? new Date(formData.to_date).toISOString()
+        : undefined,
       status: statusMap[formData.status] || "pending",
       type: formData.tag?.toLowerCase() || "corrective",
       description: formData.alternative_information,
@@ -365,10 +378,10 @@ const WorkOrders = () => {
                     <td>
                       <div>
                         <p className="font-medium text-primary-600">
-                          {order.work_order_number}
+                          {order.work_order_number || "-"}
                         </p>
                         {order.tag && (
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-slate-500 capitalize">
                             {order.tag}
                           </span>
                         )}
@@ -377,14 +390,29 @@ const WorkOrders = () => {
                     <td>
                       <div className="flex items-center gap-2">
                         <Cog className="w-4 h-4 text-slate-400" />
-                        <span>{order.equipment_name}</span>
+                        <span>{order.equipment_name || "-"}</span>
                       </div>
                     </td>
-                    <td className="text-slate-600">{order.work_center}</td>
+                    <td className="text-slate-600">
+                      {order.work_center || "-"}
+                    </td>
                     <td>
                       <div className="text-sm">
-                        <p>{order.from_date}</p>
-                        <p className="text-slate-400">to {order.to_date}</p>
+                        {order.from_date ? (
+                          <>
+                            <p>
+                              {new Date(order.from_date).toLocaleDateString()}
+                            </p>
+                            {order.to_date && (
+                              <p className="text-slate-400">
+                                to{" "}
+                                {new Date(order.to_date).toLocaleDateString()}
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-slate-400">-</span>
+                        )}
                       </div>
                     </td>
                     <td>
@@ -548,9 +576,19 @@ const WorkOrders = () => {
               <input
                 type="date"
                 value={formData.from_date}
-                onChange={(e) =>
-                  setFormData({ ...formData, from_date: e.target.value })
-                }
+                onChange={(e) => {
+                  const newFromDate = e.target.value;
+                  setFormData((prev) => ({
+                    ...prev,
+                    from_date: newFromDate,
+                    // Clear end date if it's now before the new start date
+                    to_date:
+                      prev.to_date &&
+                      new Date(prev.to_date) < new Date(newFromDate)
+                        ? ""
+                        : prev.to_date,
+                  }));
+                }}
                 className={`input ${formErrors.from_date ? "input-error" : ""}`}
               />
               {formErrors.from_date && (
@@ -565,11 +603,17 @@ const WorkOrders = () => {
               <input
                 type="date"
                 value={formData.to_date}
+                min={formData.from_date || undefined}
                 onChange={(e) =>
                   setFormData({ ...formData, to_date: e.target.value })
                 }
-                className="input"
+                className={`input ${formErrors.to_date ? "input-error" : ""}`}
               />
+              {formErrors.to_date && (
+                <p className="mt-1.5 text-sm text-danger-600">
+                  {formErrors.to_date}
+                </p>
+              )}
             </div>
           </div>
 

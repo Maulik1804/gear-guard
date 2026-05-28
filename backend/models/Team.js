@@ -40,7 +40,9 @@ const teamSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
+
+teamSchema.index({ company: 1, status: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Team", teamSchema);

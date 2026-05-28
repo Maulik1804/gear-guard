@@ -70,7 +70,10 @@ const taskSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
+
+taskSchema.index({ company: 1, status: 1, createdAt: -1 });
+taskSchema.index({ company: 1, dueDate: 1 });
 
 module.exports = mongoose.model("Task", taskSchema);

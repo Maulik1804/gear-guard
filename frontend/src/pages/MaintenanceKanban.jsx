@@ -15,6 +15,7 @@ import {
   Edit2,
   Eye,
   X,
+  Search,
 } from "lucide-react";
 import Modal from "../components/Modal";
 import { PageLoader } from "../components/LoadingSpinner";
@@ -112,7 +113,7 @@ const KanbanCard = ({ request, index, onEdit, onView }) => {
     request.stage !== "scrap";
 
   return (
-    <Draggable draggableId={request.id.toString()} index={index}>
+    <Draggable draggableId={String(request.id)} index={index}>
       {(provided, snapshot) => (
         <div
           ref={provided.innerRef}
@@ -430,10 +431,10 @@ const MaintenanceKanban = () => {
       return;
     }
 
-    // Find the request that was dragged
+    // Find the request that was dragged (compare as strings)
     const requestId = draggableId;
     const newStage = destination.droppableId;
-    const request = requests.find((r) => r.id === requestId);
+    const request = requests.find((r) => String(r.id) === String(requestId));
 
     if (!request) return;
 
@@ -449,7 +450,9 @@ const MaintenanceKanban = () => {
 
     // Optimistically update local state
     setRequests((prev) =>
-      prev.map((r) => (r.id === requestId ? { ...r, stage: newStage } : r))
+      prev.map((r) =>
+        String(r.id) === String(requestId) ? { ...r, stage: newStage } : r
+      )
     );
 
     try {
@@ -484,7 +487,9 @@ const MaintenanceKanban = () => {
       // Revert the optimistic update on error
       setRequests((prev) =>
         prev.map((r) =>
-          r.id === requestId ? { ...r, stage: source.droppableId } : r
+          String(r.id) === String(requestId)
+            ? { ...r, stage: source.droppableId }
+            : r
         )
       );
     }
@@ -539,33 +544,102 @@ const MaintenanceKanban = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    if (editingRequest) {
-      setRequests((prev) =>
-        prev.map((r) =>
-          r.id === editingRequest.id ? { ...r, ...formData } : r
-        )
+    try {
+      // Find the equipment ID from the equipment list
+      const selectedEquipment = equipmentList.find(
+        (eq) => eq.name === formData.equipment_name
       );
-      toast.success("Request updated successfully");
-    } else {
-      const newRequest = {
-        id: Date.now(),
-        ...formData,
+
+      // Find the technician ID from the technicians list
+      const selectedTechnician = technicians.find(
+        (tech) => (tech.user?.name || tech.name) === formData.assigned_to
+      );
+
+      // Map the form data to the backend schema
+      const scheduleData = {
+        title: formData.title,
+        description: formData.description,
+        equipment: selectedEquipment?._id,
+        assignedTo: selectedTechnician?._id,
+        scheduledDate: formData.due_date || new Date().toISOString(),
+        priority: formData.priority,
+        type: formData.maintenance_type?.toLowerCase() || "preventive",
+        status:
+          formData.stage === "new"
+            ? "scheduled"
+            : formData.stage === "in-progress"
+            ? "in-progress"
+            : formData.stage === "repaired"
+            ? "completed"
+            : formData.stage === "scrap"
+            ? "scrapped"
+            : "scheduled",
       };
-      setRequests((prev) => [...prev, newRequest]);
-      toast.success("Request created successfully");
+
+      if (editingRequest) {
+        // Update existing request in database
+        const response = await maintenanceSchedulesApi.update(
+          editingRequest.id,
+          scheduleData
+        );
+
+        // Update local state with the response
+        setRequests((prev) =>
+          prev.map((r) =>
+            r.id === editingRequest.id
+              ? {
+                  ...r,
+                  ...formData,
+                  id: response.data._id,
+                }
+              : r
+          )
+        );
+        toast.success("Request updated successfully");
+      } else {
+        // Create new request in database
+        const response = await maintenanceSchedulesApi.create(scheduleData);
+
+        // Add the new request to local state
+        const newRequest = {
+          id: response.data._id,
+          title: formData.title,
+          equipment_id: response.data.equipment?._id || selectedEquipment?._id,
+          equipment_name:
+            response.data.equipment?.name || formData.equipment_name,
+          description: formData.description,
+          priority: formData.priority,
+          maintenance_type: formData.maintenance_type,
+          assigned_to_id: response.data.assignedTo?._id,
+          assigned_to: response.data.assignedTo?.name || formData.assigned_to,
+          due_date: formData.due_date,
+          stage: formData.stage,
+        };
+        setRequests((prev) => [...prev, newRequest]);
+        toast.success("Request created successfully");
+      }
+      closeModal();
+    } catch (error) {
+      console.error("Error saving request:", error);
+      toast.error(error.response?.data?.message || "Failed to save request");
     }
-    closeModal();
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (confirm("Are you sure you want to delete this request?")) {
-      setRequests((prev) => prev.filter((r) => r.id !== id));
-      toast.success("Request deleted successfully");
-      closeModal();
+      try {
+        await maintenanceSchedulesApi.delete(id);
+        setRequests((prev) => prev.filter((r) => r.id !== id));
+        toast.success("Request deleted successfully");
+        closeModal();
+      } catch (error) {
+        console.error("Error deleting request:", error);
+        toast.error("Failed to delete request");
+      }
     }
   };
 
@@ -644,20 +718,11 @@ const MaintenanceKanban = () => {
 
       {/* Filters */}
       <div className="card p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <input
-              type="text"
-              placeholder="Search requests..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="input"
-            />
-          </div>
+        <div className="flex flex-col sm:flex-row gap-4 items-center">
           <select
             value={filterPriority}
             onChange={(e) => setFilterPriority(e.target.value)}
-            className="select"
+            className="select flex-1"
           >
             <option value="">All Priorities</option>
             <option value="urgent">Urgent</option>

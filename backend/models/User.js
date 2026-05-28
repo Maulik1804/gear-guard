@@ -21,6 +21,20 @@ const userSchema = new mongoose.Schema(
       minlength: 6,
       select: false,
     },
+    phone: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    job_title: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    timezone: {
+      type: String,
+      default: "America/New_York",
+    },
     company: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Company",
@@ -29,6 +43,23 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["admin", "manager", "technician", "user"],
       default: "user",
+    },
+    notification_settings: {
+      email_work_orders: { type: Boolean, default: true },
+      email_tasks: { type: Boolean, default: true },
+      email_maintenance: { type: Boolean, default: true },
+      email_reports: { type: Boolean, default: false },
+      push_work_orders: { type: Boolean, default: true },
+      push_tasks: { type: Boolean, default: true },
+      push_maintenance: { type: Boolean, default: true },
+    },
+    two_factor_enabled: {
+      type: Boolean,
+      default: false,
+    },
+    session_timeout: {
+      type: Number,
+      default: 30,
     },
   },
   {

@@ -9,21 +9,31 @@ const api = axios.create({
   },
 });
 
+const dispatchUnauthorized = () => {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("gearguard:unauthorized"));
+  }
+};
+
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
     const user = localStorage.getItem("gearguard_user");
+    const token = localStorage.getItem("gearguard_token");
     if (user) {
       const userData = JSON.parse(user);
-      // Add user info to headers if needed
-      config.headers["X-User-ID"] = userData.id;
-      config.headers["X-Company-ID"] = userData.company_id;
+      config.headers["X-User-ID"] = userData.id || userData._id;
+      config.headers["X-Company-ID"] =
+        userData.company_id || userData.company?._id || userData.company;
+    }
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // Response interceptor
@@ -32,10 +42,11 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem("gearguard_user");
-      window.location.href = "/login";
+      localStorage.removeItem("gearguard_token");
+      dispatchUnauthorized();
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 // API functions for each entity
@@ -120,6 +131,22 @@ export const notificationsApi = {
   markAsRead: (id) => api.put(`/notifications/${id}/read`),
   markAllAsRead: () => api.put("/notifications/read-all"),
   delete: (id) => api.delete(`/notifications/${id}`),
+};
+
+export const usersApi = {
+  getAll: () => api.get("/users"),
+  getById: (id) => api.get(`/users/${id}`),
+  update: (id, data) => api.put(`/users/${id}`, data),
+  changePassword: (id, data) => api.put(`/users/${id}/password`, data),
+  delete: (id) => api.delete(`/users/${id}`),
+};
+
+export const companiesApi = {
+  getAll: () => api.get("/companies"),
+  getById: (id) => api.get(`/companies/${id}`),
+  create: (data) => api.post("/companies", data),
+  update: (id, data) => api.put(`/companies/${id}`, data),
+  delete: (id) => api.delete(`/companies/${id}`),
 };
 
 export default api;

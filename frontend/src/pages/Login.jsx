@@ -138,22 +138,38 @@ const Login = () => {
 
               {/* Email */}
               <div>
-                <label className="label">Email Address</label>
+                <label htmlFor="login-email" className="label">
+                  Email Address
+                </label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <Mail
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"
+                    aria-hidden="true"
+                  />
                   <input
                     type="email"
                     name="email"
+                    id="login-email"
+                    autoComplete="email"
+                    spellCheck={false}
                     value={formData.email}
                     onChange={handleChange}
+                    aria-invalid={Boolean(errors.email)}
+                    aria-describedby={
+                      errors.email ? "login-email-error" : undefined
+                    }
                     className={`input pl-12 ${
                       errors.email ? "input-error" : ""
-                    }`}
-                    placeholder="Enter your email"
+                    } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}
+                    placeholder="Enter your email…"
                   />
                 </div>
                 {errors.email && (
-                  <p className="mt-1.5 text-sm text-danger-600">
+                  <p
+                    id="login-email-error"
+                    className="mt-1.5 text-sm text-danger-600"
+                    aria-live="polite"
+                  >
                     {errors.email}
                   </p>
                 )}
@@ -161,33 +177,51 @@ const Login = () => {
 
               {/* Password */}
               <div>
-                <label className="label">Password</label>
+                <label htmlFor="login-password" className="label">
+                  Password
+                </label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <Lock
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"
+                    aria-hidden="true"
+                  />
                   <input
                     type={showPassword ? "text" : "password"}
                     name="password"
+                    id="login-password"
+                    autoComplete="current-password"
                     value={formData.password}
                     onChange={handleChange}
+                    aria-invalid={Boolean(errors.password)}
+                    aria-describedby={
+                      errors.password ? "login-password-error" : undefined
+                    }
                     className={`input pl-12 pr-12 ${
                       errors.password ? "input-error" : ""
-                    }`}
-                    placeholder="Enter your password"
+                    } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}
+                    placeholder="Enter your password…"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 rounded"
                   >
                     {showPassword ? (
-                      <EyeOff className="w-5 h-5" />
+                      <EyeOff className="w-5 h-5" aria-hidden="true" />
                     ) : (
-                      <Eye className="w-5 h-5" />
+                      <Eye className="w-5 h-5" aria-hidden="true" />
                     )}
                   </button>
                 </div>
                 {errors.password && (
-                  <p className="mt-1.5 text-sm text-danger-600">
+                  <p
+                    id="login-password-error"
+                    className="mt-1.5 text-sm text-danger-600"
+                    aria-live="polite"
+                  >
                     {errors.password}
                   </p>
                 )}
@@ -214,12 +248,12 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="btn-primary w-full py-3 text-base"
+                className="btn-primary w-full py-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Signing in...
+                    Signing in…
                   </span>
                 ) : (
                   "Sign In"

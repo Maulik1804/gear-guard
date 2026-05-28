@@ -32,7 +32,9 @@ const locationSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
+
+locationSchema.index({ company: 1, status: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Location", locationSchema);

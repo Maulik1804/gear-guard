@@ -59,12 +59,19 @@ const maintenanceScheduleSchema = new mongoose.Schema(
     },
     priority: {
       type: String,
-      enum: ["low", "medium", "high", "critical"],
+      enum: ["low", "medium", "high", "critical", "urgent"],
       default: "medium",
     },
     type: {
       type: String,
-      enum: ["preventive", "predictive", "corrective", "inspection"],
+      enum: [
+        "preventive",
+        "predictive",
+        "corrective",
+        "inspection",
+        "calibration",
+        "emergency",
+      ],
       default: "preventive",
     },
     estimatedDuration: {
@@ -87,10 +94,13 @@ const maintenanceScheduleSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
+
+maintenanceScheduleSchema.index({ company: 1, status: 1, scheduledDate: 1 });
+maintenanceScheduleSchema.index({ equipment: 1, scheduledDate: 1 });
 
 module.exports = mongoose.model(
   "MaintenanceSchedule",
-  maintenanceScheduleSchema
+  maintenanceScheduleSchema,
 );

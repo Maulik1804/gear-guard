@@ -16,92 +16,109 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const persistUser = (nextUser) => {
+    const storageUser = {
+      id: nextUser.id,
+      name: nextUser.name,
+      email: nextUser.email,
+      role: nextUser.role,
+      company_id: nextUser.company_id,
+      company: nextUser.company,
+    };
+
+    setUser(storageUser);
+    localStorage.setItem("gearguard_user", JSON.stringify(storageUser));
+  };
+
+  const normalizeUser = (data) => {
+    const userData = data.user || data;
+
+    return {
+      ...userData,
+      id: userData.id || userData._id,
+      company_id:
+        userData.company_id ||
+        userData.company?._id ||
+        userData.company ||
+        userData.companyId,
+    };
+  };
+
   useEffect(() => {
     // Check for stored user on mount
     const storedUser = localStorage.getItem("gearguard_user");
     if (storedUser) {
       try {
-        setUser(JSON.parse(storedUser));
+        setUser(normalizeUser(JSON.parse(storedUser)));
       } catch (e) {
         localStorage.removeItem("gearguard_user");
+        localStorage.removeItem("gearguard_token");
       }
     }
     setLoading(false);
   }, []);
 
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setUser(null);
+    };
+
+    window.addEventListener("gearguard:unauthorized", handleUnauthorized);
+    return () =>
+      window.removeEventListener("gearguard:unauthorized", handleUnauthorized);
+  }, []);
+
   const login = async (email, password) => {
     try {
-      // For demo purposes, simulating login
-      // In production, this would call the actual API
       const response = await api.post("/users/login", { email, password });
-      const userData = response.data;
-      setUser(userData);
-      localStorage.setItem("gearguard_user", JSON.stringify(userData));
+      const userData = normalizeUser(response.data);
+      persistUser(userData);
+      if (response.data.token) {
+        localStorage.setItem("gearguard_token", response.data.token);
+      }
       toast.success("Welcome back!");
       return { success: true };
     } catch (error) {
-      // Demo mode: Use stored username from signup
-      const storedUser = localStorage.getItem("gearguard_user");
-      let userName = "User";
-
-      // Get the username from previously signed up user
-      if (storedUser) {
-        try {
-          const parsed = JSON.parse(storedUser);
-          if (parsed.name) {
-            userName = parsed.name;
-          }
-        } catch (e) {}
-      }
-
-      const demoUser = {
-        id: 1,
-        name: userName,
-        email: email,
-        role: "admin",
-        company_id: 1,
-      };
-      setUser(demoUser);
-      localStorage.setItem("gearguard_user", JSON.stringify(demoUser));
-      toast.success("Welcome back, " + userName + "!");
-      return { success: true };
+      const message =
+        error.response?.data?.message || "Invalid email or password";
+      toast.error(message);
+      throw new Error(message);
     }
   };
 
   const signup = async (name, email, password, companyName) => {
     try {
-      // For demo purposes, simulating signup
-      const response = await api.post("/users", {
+      const response = await api.post("/users/register", {
         name,
         email,
         password,
-        company_name: companyName,
+        companyName,
       });
-      const userData = response.data;
-      setUser(userData);
-      localStorage.setItem("gearguard_user", JSON.stringify(userData));
+      const userData = normalizeUser(response.data);
+      persistUser(userData);
+      if (response.data.token) {
+        localStorage.setItem("gearguard_token", response.data.token);
+      }
       toast.success("Account created successfully!");
       return { success: true };
     } catch (error) {
-      // Demo mode: Allow signup with any credentials
-      const demoUser = {
-        id: 1,
-        name: name,
-        email: email,
-        role: "admin",
-        company_id: 1,
-      };
-      setUser(demoUser);
-      localStorage.setItem("gearguard_user", JSON.stringify(demoUser));
-      toast.success("Welcome to GearGuard!");
-      return { success: true };
+      const message =
+        error.response?.data?.message || "Signup failed. Please try again.";
+      toast.error(message);
+      throw new Error(message);
     }
   };
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem("gearguard_user");
+    localStorage.removeItem("gearguard_token");
     toast.success("Logged out successfully");
+  };
+
+  const updateUser = (updatedData) => {
+    const newUserData = { ...user, ...updatedData };
+    persistUser(newUserData);
   };
 
   const value = {
@@ -110,6 +127,7 @@ export const AuthProvider = ({ children }) => {
     login,
     signup,
     logout,
+    updateUser,
     isAuthenticated: !!user,
   };
 

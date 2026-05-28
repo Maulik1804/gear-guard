@@ -1,13 +1,22 @@
 const express = require("express");
 const router = express.Router();
 const Notification = require("../models/Notification");
+const authenticate = require("../middleware/auth");
+
+router.use(authenticate);
 
 router.get("/", async (req, res) => {
   try {
-    const userId = req.headers["x-user-id"];
+    const userId = req.user?.id || req.headers["x-user-id"];
     const { limit = 20, unread_only = false } = req.query;
-    const query = userId ? { user: userId } : {};
+
+    // Build query - only filter by user if valid ObjectId
+    const query = {};
+    if (userId && userId.match(/^[0-9a-fA-F]{24}$/)) {
+      query.user = userId;
+    }
     if (unread_only === "true") query.isRead = false;
+
     const notifications = await Notification.find(query)
       .sort({ createdAt: -1 })
       .limit(parseInt(limit));
@@ -24,13 +33,14 @@ router.get("/", async (req, res) => {
     }));
     res.json(result);
   } catch (error) {
+    console.error("Notifications error:", error);
     res.status(500).json({ message: error.message });
   }
 });
 
 router.get("/count", async (req, res) => {
   try {
-    const userId = req.headers["x-user-id"];
+    const userId = req.user?.id || req.headers["x-user-id"];
     const query = userId ? { user: userId, isRead: false } : { isRead: false };
     const count = await Notification.countDocuments(query);
     res.json({ unread_count: count });
@@ -41,7 +51,7 @@ router.get("/count", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const userId = req.headers["x-user-id"];
+    const userId = req.user?.id || req.headers["x-user-id"];
     const { title, message, notification_type, reference_type, reference_id } =
       req.body;
     const notification = await Notification.create({
@@ -71,7 +81,7 @@ router.put("/:id/read", async (req, res) => {
     const notification = await Notification.findByIdAndUpdate(
       req.params.id,
       { isRead: true },
-      { new: true }
+      { new: true },
     );
     if (!notification)
       return res.status(404).json({ message: "Notification not found" });
@@ -83,7 +93,7 @@ router.put("/:id/read", async (req, res) => {
 
 router.put("/read-all", async (req, res) => {
   try {
-    const userId = req.headers["x-user-id"];
+    const userId = req.user?.id || req.headers["x-user-id"];
     const query = userId ? { user: userId } : {};
     const result = await Notification.updateMany(query, { isRead: true });
     res.json({

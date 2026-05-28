@@ -8,7 +8,7 @@
   }
   
   body {
-    @apply bg-slate-50 text-slate-800 font-sans;
+    @apply bg-slate-50 text-slate-800 font-sans overflow-x-hidden;
   }
   
   /* Custom scrollbar */
@@ -33,7 +33,7 @@
 @layer components {
   /* Button variants */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 font-medium text-sm rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 font-medium text-sm rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
   .btn-primary {
@@ -70,12 +70,12 @@
   }
   
   .card-hover {
-    @apply card transition-all duration-200 hover:shadow-soft hover:border-slate-200 hover:-translate-y-0.5;
+    @apply card transition-[transform,box-shadow,border-color] duration-200 hover:shadow-soft hover:border-slate-200 hover:-translate-y-0.5;
   }
   
   /* Form inputs */
   .input {
-    @apply w-full px-4 py-2.5 text-sm border border-slate-300 rounded-lg bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200;
+    @apply w-full px-4 py-2.5 text-sm border border-slate-300 rounded-lg bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-[border-color,box-shadow,background-color] duration-200;
   }
   
   .input-error {
@@ -150,7 +150,7 @@
   
   /* Sidebar navigation */
   .nav-item {
-    @apply flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200;
+    @apply flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors duration-200;
   }
   
   .nav-item-active {

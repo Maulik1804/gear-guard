@@ -68,11 +68,15 @@ const equipmentSchema = new mongoose.Schema(
     },
     specifications: {
       type: mongoose.Schema.Types.Mixed,
+      default: {},
     },
   },
   {
     timestamps: true,
-  }
+  },
 );
+
+equipmentSchema.index({ company: 1, status: 1, createdAt: -1 });
+equipmentSchema.index({ company: 1, category: 1 });
 
 module.exports = mongoose.model("Equipment", equipmentSchema);
