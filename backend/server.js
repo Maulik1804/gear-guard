@@ -14,7 +14,10 @@ const app = express();
 
 // Middleware
 const allowedOrigins = (
-  process.env.CLIENT_URLS || "http://localhost:3000,http://localhost:4173"
+  process.env.CLIENT_URLS ||
+  process.env.CORS_ORIGIN ||
+  process.env.FRONTEND_URL ||
+  "http://localhost:3000,http://localhost:4173"
 )
   .split(",")
   .map((origin) => origin.trim())
