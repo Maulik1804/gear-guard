@@ -11,6 +11,7 @@ dotenv.config();
 connectDB();
 
 const app = express();
+app.set("trust proxy", 1);
 
 // Middleware
 const allowedOrigins = (
@@ -40,7 +41,9 @@ app.use(
 );
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
-app.use(morgan("dev"));
+if (process.env.NODE_ENV === "development") {
+  app.use(morgan("dev"));
+}
 
 // Routes
 app.use("/api/auth", require("./routes/auth"));
@@ -55,6 +58,7 @@ app.use("/api/work-orders", require("./routes/workOrders"));
 app.use("/api/tasks", require("./routes/tasks"));
 app.use("/api/maintenance-schedules", require("./routes/maintenanceSchedules"));
 app.use("/api/notifications", require("./routes/notifications"));
+app.use("/api/dashboard", require("./routes/dashboard"));
 
 // Health check
 app.get("/health", (req, res) => {

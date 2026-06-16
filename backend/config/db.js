@@ -19,7 +19,15 @@ const connectDB = async () => {
       );
     }
 
-    const conn = await mongoose.connect(mongoUri);
+    const conn = await mongoose.connect(mongoUri, {
+      maxPoolSize: Number(process.env.MONGODB_MAX_POOL_SIZE) || 10,
+      minPoolSize: Number(process.env.MONGODB_MIN_POOL_SIZE) || 0,
+      maxIdleTimeMS: Number(process.env.MONGODB_MAX_IDLE_TIME_MS) || 60000,
+      serverSelectionTimeoutMS:
+        Number(process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS) || 5000,
+      connectTimeoutMS:
+        Number(process.env.MONGODB_CONNECT_TIMEOUT_MS) || 5000,
+    });
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     console.error(`❌ MongoDB Connection Error: ${error.message}`);

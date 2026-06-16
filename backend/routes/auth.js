@@ -5,6 +5,7 @@ const { body, validationResult } = require("express-validator");
 const Company = require("../models/Company");
 const User = require("../models/User");
 const authenticate = require("../middleware/auth");
+const { serializeUser } = require("../utils/serializeUser");
 
 const JWT_SECRET = process.env.JWT_SECRET || "gearguard-dev-secret-key";
 
@@ -28,7 +29,9 @@ const resolveCompanyId = async ({ company, companyName }) => {
     typeof companyName === "string" ? companyName.trim() : "";
   if (!normalizedName) return null;
 
-  const existingCompany = await Company.findOne({ name: normalizedName });
+  const existingCompany = await Company.findOne({ name: normalizedName })
+    .select("_id")
+    .lean();
   if (existingCompany) return existingCompany._id;
 
   const createdCompany = await Company.create({ name: normalizedName });
@@ -74,6 +77,7 @@ router.post(
         company: companyId,
       });
       await user.save();
+      await user.populate({ path: "company", select: "name" });
 
       const token = jwt.sign(
         {
@@ -88,9 +92,7 @@ router.post(
 
       res.status(201).json({
         message: "User registered successfully",
-        user: await User.findById(user._id)
-          .populate("company")
-          .select("-password"),
+        user: serializeUser(user),
         token,
       });
     } catch (error) {
@@ -115,7 +117,9 @@ router.post(
 
       const { email, password } = req.body;
 
-      const user = await User.findOne({ email }).select("+password");
+      const user = await User.findOne({ email })
+        .select("+password name email role company")
+        .populate({ path: "company", select: "name" });
       if (!user) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
@@ -138,9 +142,7 @@ router.post(
 
       res.json({
         message: "Login successful",
-        user: await User.findById(user._id)
-          .populate("company")
-          .select("-password"),
+        user: serializeUser(user),
         token,
       });
     } catch (error) {
@@ -157,12 +159,14 @@ router.get("/me", authenticate, async (req, res) => {
       return res.status(401).json({ message: "Not authenticated" });
     }
 
-    const user = await User.findById(userId).populate("company");
+    const user = await User.findById(userId)
+      .populate({ path: "company", select: "name" })
+      .select("-password");
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.json(user);
+    res.json(serializeUser(user));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -9,8 +9,9 @@ router.use(authenticate);
 router.get("/", async (req, res) => {
   try {
     const workCenters = await WorkCenter.find(applyCompanyFilter(req))
-      .populate("company")
-      .populate("location")
+      .populate({ path: "company", select: "name" })
+      .populate({ path: "location", select: "name" })
+      .select("name workCenterGroup company location status description capacity createdAt updatedAt")
       .sort({ createdAt: -1 });
     res.json(workCenters);
   } catch (error) {
@@ -23,8 +24,9 @@ router.get("/:id", async (req, res) => {
     const workCenter = await WorkCenter.findOne(
       applyCompanyFilter(req, { _id: req.params.id }),
     )
-      .populate("company")
-      .populate("location");
+      .populate({ path: "company", select: "name" })
+      .populate({ path: "location", select: "name" })
+      .select("name workCenterGroup company location status description capacity createdAt updatedAt");
     if (!workCenter)
       return res.status(404).json({ message: "Work center not found" });
     res.json(workCenter);

@@ -9,10 +9,11 @@ router.use(authenticate);
 router.get("/", async (req, res) => {
   try {
     const schedules = await MaintenanceSchedule.find(applyCompanyFilter(req))
-      .populate("equipment")
-      .populate("assignedTo")
-      .populate("assignedTeam")
-      .populate("company")
+      .populate({ path: "equipment", select: "name equipmentCode status" })
+      .populate({ path: "assignedTo", select: "name position status" })
+      .populate({ path: "assignedTeam", select: "name status" })
+      .populate({ path: "company", select: "name" })
+      .select("title description equipment assignedTo assignedTeam company scheduledDate frequency status priority type estimatedDuration completedDate notes checklist createdAt updatedAt")
       .sort({ scheduledDate: 1 });
     res.json(schedules);
   } catch (error) {
@@ -27,8 +28,8 @@ router.get("/range", async (req, res) => {
     if (start && end)
       query.scheduledDate = { $gte: new Date(start), $lte: new Date(end) };
     const schedules = await MaintenanceSchedule.find(query)
-      .populate("equipment")
-      .populate("assignedTo")
+      .populate({ path: "equipment", select: "name equipmentCode status" })
+      .populate({ path: "assignedTo", select: "name position status" })
       .sort({ scheduledDate: 1 });
     res.json(schedules);
   } catch (error) {
@@ -41,10 +42,11 @@ router.get("/:id", async (req, res) => {
     const schedule = await MaintenanceSchedule.findOne(
       applyCompanyFilter(req, { _id: req.params.id }),
     )
-      .populate("equipment")
-      .populate("assignedTo")
-      .populate("assignedTeam")
-      .populate("company");
+      .populate({ path: "equipment", select: "name equipmentCode status" })
+      .populate({ path: "assignedTo", select: "name position status" })
+      .populate({ path: "assignedTeam", select: "name status" })
+      .populate({ path: "company", select: "name" })
+      .select("title description equipment assignedTo assignedTeam company scheduledDate frequency status priority type estimatedDuration completedDate notes checklist createdAt updatedAt");
     if (!schedule)
       return res
         .status(404)
@@ -62,10 +64,11 @@ router.post("/", async (req, res) => {
       ...req.body,
       company: req.body.company || companyId,
     });
-    const populated = await MaintenanceSchedule.findById(schedule._id)
-      .populate("equipment")
-      .populate("assignedTo");
-    res.status(201).json(populated);
+    await schedule.populate([
+      { path: "equipment", select: "name equipmentCode status" },
+      { path: "assignedTo", select: "name position status" },
+    ]);
+    res.status(201).json(schedule);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -80,8 +83,9 @@ router.put("/:id", async (req, res) => {
       applyCompanyFilter(req, req.body),
       { new: true, runValidators: true },
     )
-      .populate("equipment")
-      .populate("assignedTo");
+      .populate({ path: "equipment", select: "name equipmentCode status" })
+      .populate({ path: "assignedTo", select: "name position status" })
+      .select("title description equipment assignedTo assignedTeam company scheduledDate frequency status priority type estimatedDuration completedDate notes checklist createdAt updatedAt");
     if (!schedule)
       return res
         .status(404)

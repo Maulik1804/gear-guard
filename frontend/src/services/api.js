@@ -4,6 +4,43 @@ const API_BASE_URL = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL.replace(/\/$/, "")}/api`
   : "http://localhost:8000/api";
 
+let sessionCache = null;
+
+const readSession = () => {
+  if (sessionCache) return sessionCache;
+
+  if (typeof window === "undefined") {
+    sessionCache = { user: null, token: null };
+    return sessionCache;
+  }
+
+  const user = localStorage.getItem("gearguard_user");
+  const token = localStorage.getItem("gearguard_token");
+
+  sessionCache = {
+    user: user ? JSON.parse(user) : null,
+    token,
+  };
+
+  return sessionCache;
+};
+
+export const setAuthSession = (user, token) => {
+  sessionCache = { user, token };
+  if (typeof window !== "undefined") {
+    if (user) localStorage.setItem("gearguard_user", JSON.stringify(user));
+    if (token) localStorage.setItem("gearguard_token", token);
+  }
+};
+
+export const clearAuthSession = () => {
+  sessionCache = { user: null, token: null };
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("gearguard_user");
+    localStorage.removeItem("gearguard_token");
+  }
+};
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -20,13 +57,11 @@ const dispatchUnauthorized = () => {
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
-    const user = localStorage.getItem("gearguard_user");
-    const token = localStorage.getItem("gearguard_token");
+    const { user, token } = readSession();
     if (user) {
-      const userData = JSON.parse(user);
-      config.headers["X-User-ID"] = userData.id || userData._id;
+      config.headers["X-User-ID"] = user.id || user._id;
       config.headers["X-Company-ID"] =
-        userData.company_id || userData.company?._id || userData.company;
+        user.company_id || user.company?._id || user.company;
     }
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -43,8 +78,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem("gearguard_user");
-      localStorage.removeItem("gearguard_token");
+      clearAuthSession();
       dispatchUnauthorized();
     }
     return Promise.reject(error);
@@ -149,6 +183,10 @@ export const companiesApi = {
   create: (data) => api.post("/companies", data),
   update: (id, data) => api.put(`/companies/${id}`, data),
   delete: (id) => api.delete(`/companies/${id}`),
+};
+
+export const dashboardApi = {
+  getSummary: () => api.get("/dashboard/summary"),
 };
 
 export default api;

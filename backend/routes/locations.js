@@ -9,7 +9,8 @@ router.use(authenticate);
 router.get("/", async (req, res) => {
   try {
     const locations = await Location.find(applyCompanyFilter(req))
-      .populate("company")
+      .populate({ path: "company", select: "name" })
+      .select("name company createdAt updatedAt")
       .sort({ createdAt: -1 });
     res.json(locations);
   } catch (error) {
@@ -21,7 +22,9 @@ router.get("/:id", async (req, res) => {
   try {
     const location = await Location.findOne(
       applyCompanyFilter(req, { _id: req.params.id }),
-    ).populate("company");
+    )
+      .populate({ path: "company", select: "name" })
+      .select("name company createdAt updatedAt");
     if (!location)
       return res.status(404).json({ message: "Location not found" });
     res.json(location);

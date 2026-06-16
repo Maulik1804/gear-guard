@@ -12,7 +12,8 @@ router.get("/", async (req, res) => {
   try {
     const employees = await Employee.find(applyCompanyFilter(req))
       .populate("user", "name email")
-      .populate("company")
+      .populate("company", "name")
+      .select("employeeCode company department position phone status location user createdAt updatedAt")
       .sort({ createdAt: -1 });
     const result = employees.map((emp) => ({
       id: emp._id,
@@ -89,7 +90,9 @@ router.post("/", async (req, res) => {
       company: employeeCompany,
       role: "user",
     });
-    const count = await Employee.countDocuments();
+    const count = await Employee.countDocuments(
+      employeeCompany ? { company: employeeCompany } : {},
+    );
     const employee = await Employee.create({
       user: user._id,
       employeeCode: `EMP-${String(count + 1).padStart(4, "0")}`,
@@ -140,7 +143,10 @@ router.put("/:id", async (req, res) => {
         location,
       }),
       { new: true, runValidators: true },
-    ).populate("user", "name email");
+    )
+      .populate("user", "name email")
+      .populate("company", "name")
+      .select("employeeCode company department position phone status location user createdAt updatedAt");
     res.json({
       id: updated._id,
       _id: updated._id,

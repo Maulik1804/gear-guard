@@ -9,9 +9,10 @@ router.use(authenticate);
 router.get("/", async (req, res) => {
   try {
     const equipment = await Equipment.find(applyCompanyFilter(req))
-      .populate("company")
-      .populate("location")
-      .populate("workCenter")
+      .populate({ path: "company", select: "name" })
+      .populate({ path: "location", select: "name" })
+      .populate({ path: "workCenter", select: "name" })
+      .select("name equipmentCode category company location workCenter status priority manufacturer model serialNumber lastMaintenanceDate nextMaintenanceDate createdAt updatedAt")
       .sort({ createdAt: -1 });
     res.json(equipment);
   } catch (error) {
@@ -21,7 +22,7 @@ router.get("/", async (req, res) => {
 
 router.get("/categories", async (req, res) => {
   try {
-    const categories = await Equipment.distinct("category");
+    const categories = await Equipment.distinct("category", applyCompanyFilter(req));
     res.json(categories.filter((c) => c));
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -54,7 +55,9 @@ router.post("/", async (req, res) => {
       req.body.company = companyId;
     }
     if (!req.body.equipmentCode) {
-      const count = await Equipment.countDocuments();
+      const count = await Equipment.countDocuments(
+        companyId ? { company: companyId } : {},
+      );
       req.body.equipmentCode = `EQ-${String(count + 1).padStart(4, "0")}`;
     }
     const equipment = await Equipment.create(req.body);
@@ -79,8 +82,9 @@ router.put("/:id", async (req, res) => {
       applyCompanyFilter(req, req.body),
       { new: true, runValidators: true },
     )
-      .populate("location")
-      .populate("workCenter");
+      .populate({ path: "location", select: "name" })
+      .populate({ path: "workCenter", select: "name" })
+      .select("name equipmentCode category company location workCenter status priority manufacturer model serialNumber lastMaintenanceDate nextMaintenanceDate createdAt updatedAt");
     if (!equipment)
       return res.status(404).json({ message: "Equipment not found" });
     res.json(equipment);

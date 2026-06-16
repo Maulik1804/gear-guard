@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import api from "../services/api";
+import api, { clearAuthSession, setAuthSession } from "../services/api";
 import toast from "react-hot-toast";
 
 const AuthContext = createContext(null);
@@ -16,7 +16,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const persistUser = (nextUser) => {
+  const persistUser = (nextUser, token = null) => {
     const storageUser = {
       id: nextUser.id,
       name: nextUser.name,
@@ -27,7 +27,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     setUser(storageUser);
-    localStorage.setItem("gearguard_user", JSON.stringify(storageUser));
+    setAuthSession(storageUser, token || localStorage.getItem("gearguard_token"));
   };
 
   const normalizeUser = (data) => {
@@ -51,8 +51,7 @@ export const AuthProvider = ({ children }) => {
       try {
         setUser(normalizeUser(JSON.parse(storedUser)));
       } catch (e) {
-        localStorage.removeItem("gearguard_user");
-        localStorage.removeItem("gearguard_token");
+        clearAuthSession();
       }
     }
     setLoading(false);
@@ -72,10 +71,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await api.post("/users/login", { email, password });
       const userData = normalizeUser(response.data);
-      persistUser(userData);
-      if (response.data.token) {
-        localStorage.setItem("gearguard_token", response.data.token);
-      }
+      persistUser(userData, response.data.token);
       toast.success("Welcome back!");
       return { success: true };
     } catch (error) {
@@ -95,10 +91,7 @@ export const AuthProvider = ({ children }) => {
         companyName,
       });
       const userData = normalizeUser(response.data);
-      persistUser(userData);
-      if (response.data.token) {
-        localStorage.setItem("gearguard_token", response.data.token);
-      }
+      persistUser(userData, response.data.token);
       toast.success("Account created successfully!");
       return { success: true };
     } catch (error) {
@@ -111,8 +104,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem("gearguard_user");
-    localStorage.removeItem("gearguard_token");
+    clearAuthSession();
     toast.success("Logged out successfully");
   };
 

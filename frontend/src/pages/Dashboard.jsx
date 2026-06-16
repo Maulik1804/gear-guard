@@ -19,12 +19,7 @@ import {
 import StatusBadge, { PriorityBadge } from "../components/StatusBadge";
 import { PageLoader } from "../components/LoadingSpinner";
 import toast from "react-hot-toast";
-import {
-  equipmentApi,
-  workOrdersApi,
-  tasksApi,
-  maintenanceSchedulesApi,
-} from "../services/api";
+import { dashboardApi } from "../services/api";
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -45,89 +40,29 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const [equipmentRes, workOrdersRes, tasksRes, maintenanceRes] =
-          await Promise.all([
-            equipmentApi.getAll(),
-            workOrdersApi.getAll(),
-            tasksApi.getAll(),
-            maintenanceSchedulesApi.getAll(),
-          ]);
+        const response = await dashboardApi.getSummary();
+        const data = response.data || {};
 
-        const equipment = equipmentRes.data || [];
-        const workOrders = workOrdersRes.data || [];
-        const tasks = tasksRes.data || [];
-        const maintenance = maintenanceRes.data || [];
-
-        // Calculate stats
-        const today = new Date().toISOString().split("T")[0];
-        const completedToday = workOrders.filter(
-          (wo) =>
-            wo.status === "completed" && wo.updatedAt?.split("T")[0] === today
-        ).length;
-        const overdueItems = maintenance.filter(
-          (m) =>
-            m.status !== "completed" && new Date(m.scheduledDate) < new Date()
-        ).length;
-
-        setStats({
-          totalEquipment: equipment.length,
-          activeWorkOrders: workOrders.filter(
-            (wo) => wo.status === "in-progress"
-          ).length,
-          pendingTasks: tasks.filter((t) => t.status === "pending").length,
-          scheduledMaintenance: maintenance.filter(
-            (m) => m.status === "scheduled"
-          ).length,
-          completedToday,
-          overdueItems,
-        });
-
-        // Recent work orders (last 5)
-        setRecentWorkOrders(
-          workOrders.slice(0, 5).map((wo) => ({
-            id: wo._id,
-            number: wo.workOrderNumber || `WO-${wo._id?.slice(-6)}`,
-            equipment: wo.equipment?.name || "Unknown Equipment",
-            status: wo.status || "draft",
-            priority: wo.priority || "medium",
-            assignee: wo.assignedTo?.name || "Unassigned",
+        setStats((current) => ({
+          ...current,
+          ...(data.stats || {}),
+        }));
+        setRecentWorkOrders(data.recentWorkOrders || []);
+        setUpcomingMaintenance(
+          (data.upcomingMaintenance || []).map((item) => ({
+            ...item,
+            date: item.date ? new Date(item.date).toLocaleDateString() : "",
           }))
         );
-
-        // Upcoming maintenance (next 4)
-        const upcomingMaint = maintenance
-          .filter((m) => new Date(m.scheduledDate) >= new Date())
-          .sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate))
-          .slice(0, 4)
-          .map((m) => ({
-            id: m._id,
-            equipment: m.equipment?.name || "Unknown Equipment",
-            type: m.type || "Preventive",
-            date: m.scheduledDate
-              ? new Date(m.scheduledDate).toLocaleDateString()
-              : "",
-            time: m.scheduledTime || "09:00 AM",
-          }));
-        setUpcomingMaintenance(upcomingMaint);
-
-        // Recent activity from work orders and tasks
-        const activities = [
-          ...workOrders.slice(0, 3).map((wo) => ({
-            id: wo._id,
-            action: wo.status === "completed" ? "completed" : "updated",
-            item: `Work Order ${wo.workOrderNumber || wo._id?.slice(-6)}`,
-            user: wo.assignedTo?.name || "System",
-            time: getTimeAgo(wo.updatedAt),
-          })),
-          ...tasks.slice(0, 2).map((t) => ({
-            id: t._id,
-            action: t.status === "completed" ? "completed" : "created",
-            item: `Task: ${t.name || "Unnamed"}`,
-            user: t.assignedTo?.name || "System",
-            time: getTimeAgo(t.updatedAt),
-          })),
-        ];
-        setRecentActivity(activities.slice(0, 5));
+        setRecentActivity(
+          (data.recentTasks || []).map((task) => ({
+            id: task.id,
+            action: task.status === "completed" ? "completed" : "created",
+            item: `Task: ${task.title || "Unnamed"}`,
+            user: task.user || "System",
+            time: getTimeAgo(task.updatedAt),
+          }))
+        );
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
         toast.error("Failed to load dashboard data");

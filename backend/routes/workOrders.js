@@ -9,11 +9,12 @@ router.use(authenticate);
 router.get("/", async (req, res) => {
   try {
     const workOrders = await WorkOrder.find(applyCompanyFilter(req))
-      .populate("equipment")
-      .populate("workCenter")
-      .populate("company")
-      .populate("assignedTo")
-      .populate("assignedTeam")
+      .populate({ path: "equipment", select: "name equipmentCode status" })
+      .populate({ path: "workCenter", select: "name status" })
+      .populate({ path: "company", select: "name" })
+      .populate({ path: "assignedTo", select: "name position status" })
+      .populate({ path: "assignedTeam", select: "name status" })
+      .select("orderNumber title description equipment workCenter company assignedTo assignedTeam priority status type scheduledDate dueDate completedDate estimatedHours actualHours cost createdAt updatedAt")
       .sort({ createdAt: -1 });
     res.json(workOrders);
   } catch (error) {
@@ -26,11 +27,12 @@ router.get("/:id", async (req, res) => {
     const workOrder = await WorkOrder.findOne(
       applyCompanyFilter(req, { _id: req.params.id }),
     )
-      .populate("equipment")
-      .populate("workCenter")
-      .populate("company")
-      .populate("assignedTo")
-      .populate("assignedTeam");
+      .populate({ path: "equipment", select: "name equipmentCode status" })
+      .populate({ path: "workCenter", select: "name status" })
+      .populate({ path: "company", select: "name" })
+      .populate({ path: "assignedTo", select: "name position status" })
+      .populate({ path: "assignedTeam", select: "name status" })
+      .select("orderNumber title description equipment workCenter company assignedTo assignedTeam priority status type scheduledDate dueDate completedDate estimatedHours actualHours cost createdAt updatedAt");
     if (!workOrder)
       return res.status(404).json({ message: "Work order not found" });
     res.json(workOrder);
@@ -46,10 +48,11 @@ router.post("/", async (req, res) => {
       ...req.body,
       company: req.body.company || companyId,
     });
-    const populated = await WorkOrder.findById(workOrder._id)
-      .populate("equipment")
-      .populate("assignedTo");
-    res.status(201).json(populated);
+    await workOrder.populate([
+      { path: "equipment", select: "name equipmentCode status" },
+      { path: "assignedTo", select: "name position status" },
+    ]);
+    res.status(201).json(workOrder);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -64,8 +67,9 @@ router.put("/:id", async (req, res) => {
       applyCompanyFilter(req, req.body),
       { new: true, runValidators: true },
     )
-      .populate("equipment")
-      .populate("assignedTo");
+      .populate({ path: "equipment", select: "name equipmentCode status" })
+      .populate({ path: "assignedTo", select: "name position status" })
+      .select("orderNumber title description equipment workCenter company assignedTo assignedTeam priority status type scheduledDate dueDate completedDate estimatedHours actualHours cost createdAt updatedAt");
     if (!workOrder)
       return res.status(404).json({ message: "Work order not found" });
     res.json(workOrder);

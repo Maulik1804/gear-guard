@@ -9,9 +9,10 @@ router.use(authenticate);
 router.get("/", async (req, res) => {
   try {
     const teams = await Team.find(applyCompanyFilter(req))
-      .populate("leader")
-      .populate("company")
-      .populate("members.employee")
+      .populate({ path: "leader", select: "name email" })
+      .populate({ path: "company", select: "name" })
+      .populate({ path: "members.employee", select: "name email" })
+      .select("name leader company members status description createdAt updatedAt")
       .sort({ createdAt: -1 });
     res.json(teams);
   } catch (error) {
@@ -24,9 +25,10 @@ router.get("/:id", async (req, res) => {
     const team = await Team.findOne(
       applyCompanyFilter(req, { _id: req.params.id }),
     )
-      .populate("leader")
-      .populate("company")
-      .populate("members.employee");
+      .populate({ path: "leader", select: "name email" })
+      .populate({ path: "company", select: "name" })
+      .populate({ path: "members.employee", select: "name email" })
+      .select("name leader company members status description createdAt updatedAt");
     if (!team) return res.status(404).json({ message: "Team not found" });
     res.json(team);
   } catch (error) {
@@ -41,10 +43,11 @@ router.post("/", async (req, res) => {
       ...req.body,
       company: req.body.company || companyId,
     });
-    const populated = await Team.findById(team._id)
-      .populate("leader")
-      .populate("company");
-    res.status(201).json(populated);
+    await team.populate([
+      { path: "leader", select: "name email" },
+      { path: "company", select: "name" },
+    ]);
+    res.status(201).json(team);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -63,8 +66,9 @@ router.put("/:id", async (req, res) => {
         runValidators: true,
       },
     )
-      .populate("leader")
-      .populate("company");
+      .populate({ path: "leader", select: "name email" })
+      .populate({ path: "company", select: "name" })
+      .select("name leader company members status description createdAt updatedAt");
     if (!team) return res.status(404).json({ message: "Team not found" });
     res.json(team);
   } catch (error) {
@@ -101,8 +105,9 @@ router.post("/:id/members", async (req, res) => {
     team.members.push({ employee: employee_id });
     await team.save();
     const updated = await Team.findById(req.params.id)
-      .populate("leader")
-      .populate("members.employee");
+      .populate({ path: "leader", select: "name email" })
+      .populate({ path: "members.employee", select: "name email" })
+      .select("name leader company members status description createdAt updatedAt");
     res.json(updated);
   } catch (error) {
     res.status(500).json({ message: error.message });

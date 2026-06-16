@@ -83,7 +83,8 @@ workOrderSchema.index({ company: 1, dueDate: 1 });
 // Auto-generate order number
 workOrderSchema.pre("save", async function (next) {
   if (!this.orderNumber) {
-    const count = await this.constructor.countDocuments();
+    const query = this.company ? { company: this.company } : {};
+    const count = await this.constructor.countDocuments(query);
     this.orderNumber = `WO-${String(count + 1).padStart(4, "0")}`;
   }
   next();

@@ -19,7 +19,9 @@ router.get("/", async (req, res) => {
 
     const notifications = await Notification.find(query)
       .sort({ createdAt: -1 })
-      .limit(parseInt(limit));
+      .limit(parseInt(limit, 10))
+      .select("user title message type isRead referenceType referenceId createdAt")
+      .lean();
     const result = notifications.map((n) => ({
       id: n._id,
       user_id: n.user,

@@ -11,7 +11,10 @@ router.get("/", async (req, res) => {
     if (req.user?.role !== "admin") {
       return res.status(403).json({ message: "Access denied" });
     }
-    const companies = await Company.find().sort({ createdAt: -1 });
+    const companies = await Company.find()
+      .select("name address city state country phone email website createdAt updatedAt")
+      .sort({ createdAt: -1 })
+      .lean();
     res.json(companies);
   } catch (error) {
     res.status(500).json({ message: error.message });

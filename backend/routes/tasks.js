@@ -9,10 +9,11 @@ router.use(authenticate);
 router.get("/", async (req, res) => {
   try {
     const tasks = await Task.find(applyCompanyFilter(req))
-      .populate("workOrder")
-      .populate("equipment")
-      .populate("assignedTo")
-      .populate("company")
+      .populate({ path: "workOrder", select: "orderNumber title status dueDate" })
+      .populate({ path: "equipment", select: "name equipmentCode status" })
+      .populate({ path: "assignedTo", select: "name position status" })
+      .populate({ path: "company", select: "name" })
+      .select("title description workOrder equipment assignedTo company status priority type dueDate completedDate estimatedTime actualTime notes createdAt updatedAt")
       .sort({ createdAt: -1 });
     res.json(tasks);
   } catch (error) {
@@ -40,10 +41,11 @@ router.get("/:id", async (req, res) => {
     const task = await Task.findOne(
       applyCompanyFilter(req, { _id: req.params.id }),
     )
-      .populate("workOrder")
-      .populate("equipment")
-      .populate("assignedTo")
-      .populate("company");
+      .populate({ path: "workOrder", select: "orderNumber title status dueDate" })
+      .populate({ path: "equipment", select: "name equipmentCode status" })
+      .populate({ path: "assignedTo", select: "name position status" })
+      .populate({ path: "company", select: "name" })
+      .select("title description workOrder equipment assignedTo company status priority type dueDate completedDate estimatedTime actualTime notes createdAt updatedAt");
     if (!task) return res.status(404).json({ message: "Task not found" });
     res.json(task);
   } catch (error) {
@@ -58,10 +60,11 @@ router.post("/", async (req, res) => {
       ...req.body,
       company: req.body.company || companyId,
     });
-    const populated = await Task.findById(task._id)
-      .populate("equipment")
-      .populate("assignedTo");
-    res.status(201).json(populated);
+    await task.populate([
+      { path: "equipment", select: "name equipmentCode status" },
+      { path: "assignedTo", select: "name position status" },
+    ]);
+    res.status(201).json(task);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -79,8 +82,9 @@ router.put("/:id", async (req, res) => {
       }),
       { new: true, runValidators: true },
     )
-      .populate("equipment")
-      .populate("assignedTo");
+      .populate({ path: "equipment", select: "name equipmentCode status" })
+      .populate({ path: "assignedTo", select: "name position status" })
+      .select("title description workOrder equipment assignedTo company status priority type dueDate completedDate estimatedTime actualTime notes createdAt updatedAt");
     if (!task) return res.status(404).json({ message: "Task not found" });
     res.json(task);
   } catch (error) {

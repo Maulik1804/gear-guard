@@ -5,6 +5,7 @@ const { body, validationResult } = require("express-validator");
 const Company = require("../models/Company");
 const User = require("../models/User");
 const authenticate = require("../middleware/auth");
+const { serializeUser } = require("../utils/serializeUser");
 
 const validate = (req, res) => {
   const errors = validationResult(req);
@@ -26,7 +27,9 @@ const resolveCompanyId = async ({ company, companyName }) => {
     typeof companyName === "string" ? companyName.trim() : "";
   if (!normalizedName) return null;
 
-  const existingCompany = await Company.findOne({ name: normalizedName });
+  const existingCompany = await Company.findOne({ name: normalizedName })
+    .select("_id")
+    .lean();
   if (existingCompany) return existingCompany._id;
 
   const createdCompany = await Company.create({ name: normalizedName });
@@ -71,6 +74,7 @@ router.post(
         company: companyId,
         role,
       });
+      await user.populate({ path: "company", select: "name" });
       const token = jwt.sign(
         {
           id: user._id,
@@ -82,9 +86,7 @@ router.post(
         { expiresIn: process.env.JWT_EXPIRE || "7d" },
       );
       res.status(201).json({
-        user: await User.findById(user._id)
-          .populate("company")
-          .select("-password"),
+        user: serializeUser(user),
         token,
       });
     } catch (error) {
@@ -108,7 +110,9 @@ router.post(
       if (!validate(req, res)) return;
 
       const { email, password } = req.body;
-      const user = await User.findOne({ email }).select("+password");
+      const user = await User.findOne({ email })
+        .select("+password name email role company")
+        .populate({ path: "company", select: "name" });
       if (!user)
         return res.status(401).json({ message: "Invalid credentials" });
       const isMatch = await user.comparePassword(password);
@@ -125,9 +129,7 @@ router.post(
         { expiresIn: process.env.JWT_EXPIRE || "7d" },
       );
       res.json({
-        user: await User.findById(user._id)
-          .populate("company")
-          .select("-password"),
+        user: serializeUser(user),
         token,
       });
     } catch (error) {
@@ -147,7 +149,10 @@ router.get("/", async (req, res) => {
     if (req.user?.role !== "admin") {
       return res.status(403).json({ message: "Access denied" });
     }
-    const users = await User.find().populate("company").select("-password");
+    const users = await User.find()
+      .populate({ path: "company", select: "name" })
+      .select("name email role company phone job_title timezone createdAt updatedAt")
+      .lean();
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -161,8 +166,9 @@ router.get("/:id", async (req, res) => {
       return res.status(403).json({ message: "Access denied" });
     }
     const user = await User.findById(req.params.id)
-      .populate("company")
-      .select("-password");
+      .populate({ path: "company", select: "name" })
+      .select("name email role company phone job_title timezone createdAt updatedAt")
+      .lean();
     if (!user) return res.status(404).json({ message: "User not found" });
     res.json(user);
   } catch (error) {
@@ -206,7 +212,10 @@ router.put("/:id", async (req, res) => {
     const user = await User.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
       runValidators: true,
-    }).select("-password");
+    })
+      .populate({ path: "company", select: "name" })
+      .select("name email role company phone job_title timezone createdAt updatedAt")
+      .lean();
     if (!user) return res.status(404).json({ message: "User not found" });
     res.json(user);
   } catch (error) {
